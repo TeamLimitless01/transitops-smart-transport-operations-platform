@@ -2,6 +2,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 
+export async function GET(req: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const { searchParams } = new URL(req.url);
+    const type = searchParams.get("type"); // e.g. ?type=FUEL or ?type=OTHER
+
+    const expenses = await prisma.expense.findMany({
+      where: type ? { type: type as any } : undefined,
+      include: {
+        vehicle: { select: { id: true, name: true, registrationNumber: true } },
+        trip: { select: { id: true, source: true, destination: true } },
+      },
+      orderBy: { date: "desc" },
+    });
+
+    return NextResponse.json(expenses);
+  } catch (error) {
+    console.error("[GET EXPENSES ERROR]", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
