@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Trash2, X, Loader2 } from "lucide-react";
+import ModalPortal from "@/components/ui/ModalPortal";
 
 interface User {
   id: string;
@@ -251,9 +252,10 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50">
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50 shrink-0">
               <h3 className="text-lg font-bold text-slate-100">Create New Account</h3>
               <button 
                 onClick={() => { setIsModalOpen(false); resetForm(); }}
@@ -263,7 +265,7 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} className="p-6 flex flex-col gap-5">
+            <form onSubmit={handleCreateUser} className="p-6 flex flex-col gap-5 overflow-y-auto min-h-0 flex-1">
               {serverError && (
                 <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-xl">
                   {serverError}
@@ -347,6 +349,7 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
             </form>
           </div>
         </div>
+      </ModalPortal>
       )}
     </div>
   );

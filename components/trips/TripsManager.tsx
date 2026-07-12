@@ -256,13 +256,13 @@ export default function TripsManager({ initialTrips, vehicles, drivers }: TripsM
       {/* Dispatch Modal */}
       {isDispatchOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 no-print">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50 shrink-0">
               <h3 className="text-lg font-bold text-slate-100">Dispatch New Trip</h3>
               <button onClick={() => { setIsDispatchOpen(false); resetForm(); }} className="text-slate-500 hover:text-slate-300 transition-colors p-1"><X size={20} /></button>
             </div>
 
-            <form onSubmit={handleDispatch} className="p-6 flex flex-col gap-5">
+            <form onSubmit={handleDispatch} className="p-6 flex flex-col gap-5 overflow-y-auto min-h-0 flex-1">
               {serverError && (
                 <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-xl flex items-center gap-2">
                   <Info size={16} />{serverError}
@@ -344,8 +344,8 @@ export default function TripsManager({ initialTrips, vehicles, drivers }: TripsM
         <>
           {/* Screen modal */}
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 no-print">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
-              <div className="sticky top-0 flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900 z-10">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="bg-indigo-500/10 p-2 rounded-lg">
                     <FileText size={18} className="text-indigo-400" />
@@ -366,7 +366,7 @@ export default function TripsManager({ initialTrips, vehicles, drivers }: TripsM
                 </div>
               </div>
 
-              <div className="p-6 flex flex-col gap-6">
+              <div className="p-6 flex flex-col gap-6 overflow-y-auto min-h-0 flex-1">
                 {/* Status */}
                 <div className="flex items-center justify-between">
                   <span className={`text-[10px] font-bold tracking-wider px-3 py-1.5 rounded-full border border-current ${STATUS_META[reportTrip.status]?.color}`}>

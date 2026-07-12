@@ -372,8 +372,8 @@ export default function DriverDashboard({ driverName, trips }: DriverDashboardPr
       {/* Expense Modal */}
       {expenseModalOpen && selectedTrip && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0">
               <h3 className="text-lg font-bold text-slate-100">Log Expense</h3>
               <button 
                 onClick={() => { setExpenseModalOpen(false); resetExpForm(); }}
@@ -383,7 +383,7 @@ export default function DriverDashboard({ driverName, trips }: DriverDashboardPr
               </button>
             </div>
             
-            <form onSubmit={handleAddExpense} className="p-6 flex flex-col gap-4">
+            <form onSubmit={handleAddExpense} className="p-6 flex flex-col gap-4 overflow-y-auto">
               {serverError && (
                 <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-xl">
                   {serverError}
@@ -466,8 +466,8 @@ export default function DriverDashboard({ driverName, trips }: DriverDashboardPr
       {/* Complete Trip Modal */}
       {completeModalOpen && selectedTrip && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0">
               <h3 className="text-lg font-bold text-slate-100">Complete Trip</h3>
               <button 
                 onClick={() => { setCompleteModalOpen(false); setActualDistance(""); setFuelConsumed(""); setServerError(null); }}
@@ -477,7 +477,7 @@ export default function DriverDashboard({ driverName, trips }: DriverDashboardPr
               </button>
             </div>
             
-            <form onSubmit={handleCompleteTrip} className="p-6 flex flex-col gap-4">
+            <form onSubmit={handleCompleteTrip} className="p-6 flex flex-col gap-4 overflow-y-auto">
               {serverError && (
                 <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-xl">
                   {serverError}
