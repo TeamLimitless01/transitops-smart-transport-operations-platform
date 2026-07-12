@@ -10,6 +10,9 @@ interface User {
   phone: string | null;
   role: string;
   createdAt: string;
+  driver?: {
+    status: string;
+  } | null;
 }
 
 interface UsersManagerProps {
@@ -22,6 +25,14 @@ const ROLE_DETAILS: Record<string, { label: string; color: string; desc: string 
   DRIVER: { label: "Driver", color: "#10b981", desc: "Operates fleet vehicles" },
   SAFETY_OFFICER: { label: "Safety Officer", color: "#f59e0b", desc: "Manages safety metrics & scorecards" },
   FINANCIAL_ANALYST: { label: "Financial Analyst", color: "#3b82f6", desc: "Oversees trip expenses & costs" },
+};
+
+const DRIVER_STATUSES = ["AVAILABLE", "ON_TRIP", "OFF_DUTY", "SUSPENDED"];
+const STATUS_COLORS: Record<string, string> = {
+  AVAILABLE: "#10b981",
+  ON_TRIP: "#3b82f6",
+  OFF_DUTY: "#64748b",
+  SUSPENDED: "#ef4444",
 };
 
 export default function UsersManager({ initialUsers, currentUserId }: UsersManagerProps) {
@@ -37,6 +48,12 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("DRIVER");
+  
+  // Driver Form State
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [licenseCategory, setLicenseCategory] = useState("");
+  const [licenseExpiryDate, setLicenseExpiryDate] = useState("");
+
   const [formErrors, setFormErrors] = useState<Record<string, string[]>>({});
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -56,6 +73,9 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
     setPhone("");
     setPassword("");
     setRole("DRIVER");
+    setLicenseNumber("");
+    setLicenseCategory("");
+    setLicenseExpiryDate("");
     setFormErrors({});
     setServerError(null);
   };
@@ -70,7 +90,12 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
         const res = await fetch("/api/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email, phone, password, role }),
+          body: JSON.stringify({ 
+            name, email, phone, password, role,
+            licenseNumber: role === "DRIVER" ? licenseNumber : undefined,
+            licenseCategory: role === "DRIVER" ? licenseCategory : undefined,
+            licenseExpiryDate: role === "DRIVER" ? licenseExpiryDate : undefined,
+          }),
         });
 
         const data = await res.json();
@@ -84,7 +109,6 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
           return;
         }
 
-        // Add user to state and close
         setUsers([data, ...users]);
         setIsModalOpen(false);
         resetForm();
@@ -111,6 +135,28 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
       router.refresh();
     } catch (err) {
       alert("Network error. Failed to delete user.");
+    }
+  };
+
+  const handleStatusChange = async (userId: string, newStatus: string) => {
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ driverStatus: newStatus }),
+      });
+      if (!res.ok) {
+        alert("Failed to update status");
+        return;
+      }
+      setUsers(users.map(u => {
+        if (u.id === userId && u.driver) {
+          return { ...u, driver: { status: newStatus } };
+        }
+        return u;
+      }));
+    } catch (err) {
+      alert("Network error.");
     }
   };
 
@@ -148,8 +194,8 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
             <thead>
               <tr>
                 <th>User Details</th>
-                <th>Phone</th>
                 <th>Role</th>
+                <th>Driver Status</th>
                 <th>Registered</th>
                 <th>Actions</th>
               </tr>
@@ -169,11 +215,26 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
                         </div>
                       </div>
                     </td>
-                    <td className="user-phone-cell">{user.phone || "—"}</td>
                     <td>
                       <span className="role-chip" style={{ "--role-color": ROLE_DETAILS[user.role]?.color } as React.CSSProperties}>
                         {ROLE_DETAILS[user.role]?.label || user.role}
                       </span>
+                    </td>
+                    <td>
+                      {user.role === "DRIVER" && user.driver ? (
+                        <select
+                          className="status-dropdown"
+                          value={user.driver.status}
+                          onChange={(e) => handleStatusChange(user.id, e.target.value)}
+                          style={{ "--status-color": STATUS_COLORS[user.driver.status] } as React.CSSProperties}
+                        >
+                          {DRIVER_STATUSES.map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-slate-500 text-sm">—</span>
+                      )}
                     </td>
                     <td className="user-date-cell">
                       {new Date(user.createdAt).toLocaleDateString("en-US", {
@@ -217,7 +278,7 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
       {/* Add User Modal */}
       {isModalOpen && (
         <div className="modal-backdrop">
-          <div className="modal-content">
+          <div className="modal-content modal-large">
             <div className="modal-header">
               <h3 className="modal-title">Create New Account</h3>
               <button onClick={() => { setIsModalOpen(false); resetForm(); }} className="close-modal-btn">
@@ -235,80 +296,128 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
                 </div>
               )}
 
-              {/* Name */}
-              <div className="form-group">
-                <label className="form-label">Full Name</label>
-                <input
-                  type="text"
-                  placeholder="John Doe"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className={`form-input ${formErrors.name ? "input-err" : ""}`}
-                />
-                {formErrors.name && (
-                  <p className="field-err-lbl">{formErrors.name[0]}</p>
-                )}
-              </div>
+              <div className="form-grid">
+                {/* Name */}
+                <div className="form-group">
+                  <label className="form-label">Full Name</label>
+                  <input
+                    type="text"
+                    placeholder="John Doe"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className={`form-input ${formErrors.name ? "input-err" : ""}`}
+                  />
+                  {formErrors.name && (
+                    <p className="field-err-lbl">{formErrors.name[0]}</p>
+                  )}
+                </div>
 
-              {/* Email */}
-              <div className="form-group">
-                <label className="form-label">Email Address</label>
-                <input
-                  type="email"
-                  placeholder="john@company.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={`form-input ${formErrors.email ? "input-err" : ""}`}
-                />
-                {formErrors.email && (
-                  <p className="field-err-lbl">{formErrors.email[0]}</p>
-                )}
-              </div>
+                {/* Email */}
+                <div className="form-group">
+                  <label className="form-label">Email Address</label>
+                  <input
+                    type="email"
+                    placeholder="john@company.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={`form-input ${formErrors.email ? "input-err" : ""}`}
+                  />
+                  {formErrors.email && (
+                    <p className="field-err-lbl">{formErrors.email[0]}</p>
+                  )}
+                </div>
 
-              {/* Phone */}
-              <div className="form-group">
-                <label className="form-label">Phone Number (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="+15551234567"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className={`form-input ${formErrors.phone ? "input-err" : ""}`}
-                />
-                {formErrors.phone && (
-                  <p className="field-err-lbl">{formErrors.phone[0]}</p>
-                )}
-              </div>
+                {/* Phone */}
+                <div className="form-group">
+                  <label className="form-label">Phone Number (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="+15551234567"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className={`form-input ${formErrors.phone ? "input-err" : ""}`}
+                  />
+                  {formErrors.phone && (
+                    <p className="field-err-lbl">{formErrors.phone[0]}</p>
+                  )}
+                </div>
 
-              {/* Password */}
-              <div className="form-group">
-                <label className="form-label">Password</label>
-                <input
-                  type="password"
-                  placeholder="Min. 8 chars, 1 uppercase, 1 digit"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={`form-input ${formErrors.password ? "input-err" : ""}`}
-                />
-                {formErrors.password && (
-                  <p className="field-err-lbl">{formErrors.password[0]}</p>
-                )}
-              </div>
+                {/* Password */}
+                <div className="form-group">
+                  <label className="form-label">Password</label>
+                  <input
+                    type="password"
+                    placeholder="Min. 8 chars, 1 uppercase, 1 digit"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={`form-input ${formErrors.password ? "input-err" : ""}`}
+                  />
+                  {formErrors.password && (
+                    <p className="field-err-lbl">{formErrors.password[0]}</p>
+                  )}
+                </div>
 
-              {/* Role */}
-              <div className="form-group">
-                <label className="form-label">System Role</label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="form-select"
-                >
-                  {Object.entries(ROLE_DETAILS).map(([key, value]) => (
-                    <option key={key} value={key}>
-                      {value.label} — {value.desc}
-                    </option>
-                  ))}
-                </select>
+                {/* Role */}
+                <div className="form-group col-span-2">
+                  <label className="form-label">System Role</label>
+                  <select
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                    className="form-select"
+                  >
+                    {Object.entries(ROLE_DETAILS).map(([key, value]) => (
+                      <option key={key} value={key}>
+                        {value.label} — {value.desc}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Driver Specific Fields */}
+                {role === "DRIVER" && (
+                  <>
+                    <div className="form-group">
+                      <label className="form-label">License Number</label>
+                      <input
+                        type="text"
+                        placeholder="D-1234567"
+                        value={licenseNumber}
+                        onChange={(e) => setLicenseNumber(e.target.value)}
+                        className={`form-input ${formErrors.licenseNumber ? "input-err" : ""}`}
+                      />
+                      {formErrors.licenseNumber && (
+                        <p className="field-err-lbl">{formErrors.licenseNumber[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">License Category</label>
+                      <input
+                        type="text"
+                        placeholder="CDL Class A"
+                        value={licenseCategory}
+                        onChange={(e) => setLicenseCategory(e.target.value)}
+                        className={`form-input ${formErrors.licenseCategory ? "input-err" : ""}`}
+                      />
+                      {formErrors.licenseCategory && (
+                        <p className="field-err-lbl">{formErrors.licenseCategory[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="form-group col-span-2">
+                      <label className="form-label">License Expiry Date</label>
+                      <input
+                        type="date"
+                        value={licenseExpiryDate}
+                        onChange={(e) => setLicenseExpiryDate(e.target.value)}
+                        className={`form-input ${formErrors.licenseExpiryDate ? "input-err" : ""}`}
+                      />
+                      {formErrors.licenseExpiryDate && (
+                        <p className="field-err-lbl">{formErrors.licenseExpiryDate[0]}</p>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="modal-actions">
@@ -499,6 +608,24 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
           color: var(--role-color);
           text-transform: capitalize;
         }
+        
+        .status-dropdown {
+          background: rgba(var(--status-color), 0.12);
+          border: 1px solid var(--status-color);
+          color: var(--status-color);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.2px;
+          padding: 4px 10px;
+          border-radius: 20px;
+          outline: none;
+          cursor: pointer;
+        }
+        
+        .status-dropdown option {
+          background: #0f0f18;
+          color: #cbd5e1;
+        }
 
         .delete-user-btn {
           background: transparent;
@@ -553,6 +680,10 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
           flex-direction: column;
           animation: scaleUp 0.2s ease;
         }
+        
+        .modal-large {
+          max-width: 600px;
+        }
 
         @keyframes scaleUp {
           from { opacity: 0; transform: scale(0.96); }
@@ -595,6 +726,12 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
           flex-direction: column;
           gap: 16px;
         }
+        
+        .form-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
 
         .modal-error-banner {
           background: rgba(239, 68, 68, 0.1);
@@ -609,6 +746,10 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
           display: flex;
           flex-direction: column;
           gap: 6px;
+        }
+        
+        .col-span-2 {
+          grid-column: span 2;
         }
 
         .form-label {

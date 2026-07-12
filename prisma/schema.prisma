@@ -72,6 +72,8 @@ model User {
 
   role      Role
 
+  driver    Driver?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -113,7 +115,7 @@ model Driver {
 
   status             DriverStatus  @default(AVAILABLE)
 
-  userId            String         
+  userId            String         @unique
   user              User           @relation(fields: [userId], references: [id])
 
   trips              Trip[]

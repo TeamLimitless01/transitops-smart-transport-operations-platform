@@ -32,6 +32,33 @@ export const createUserSchema = z.object({
     .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
     .regex(/[0-9]/, "Password must contain at least one number"),
   role: z.enum(["FLEET_MANAGER", "DRIVER", "SAFETY_OFFICER", "FINANCIAL_ANALYST"]),
+  licenseNumber: z.string().optional(),
+  licenseCategory: z.string().optional(),
+  licenseExpiryDate: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.role === "DRIVER") {
+    if (!data.licenseNumber || data.licenseNumber.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "License number is required for drivers",
+        path: ["licenseNumber"],
+      });
+    }
+    if (!data.licenseCategory || data.licenseCategory.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "License category is required for drivers",
+        path: ["licenseCategory"],
+      });
+    }
+    if (!data.licenseExpiryDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "License expiry date is required for drivers",
+        path: ["licenseExpiryDate"],
+      });
+    }
+  }
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
