@@ -69,10 +69,9 @@ export async function Sidebar() {
                 key={menu.href}
                 href={menu.href}
                 className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-colors text-sm font-medium
-                  ${
-                    active
-                      ? "bg-indigo-500/10 text-indigo-400"
-                      : "text-slate-400 hover:bg-slate-900 hover:text-slate-200"
+                  ${active
+                    ? "bg-indigo-500/10 text-indigo-400"
+                    : "text-slate-400 hover:bg-slate-900 hover:text-slate-200"
                   }`}
               >
                 <Icon size={18} className={active ? "text-indigo-400" : "text-slate-500"} />

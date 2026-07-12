@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Plus, Search, Trash2, X, Loader2 } from "lucide-react";
 
 interface User {
   id: string;
@@ -20,19 +21,19 @@ interface UsersManagerProps {
   currentUserId: string;
 }
 
-const ROLE_DETAILS: Record<string, { label: string; color: string; desc: string }> = {
-  FLEET_MANAGER: { label: "Fleet Manager", color: "#6366f1", desc: "Full administrative access" },
-  DRIVER: { label: "Driver", color: "#10b981", desc: "Operates fleet vehicles" },
-  SAFETY_OFFICER: { label: "Safety Officer", color: "#f59e0b", desc: "Manages safety metrics & scorecards" },
-  FINANCIAL_ANALYST: { label: "Financial Analyst", color: "#3b82f6", desc: "Oversees trip expenses & costs" },
+const ROLE_DETAILS: Record<string, { label: string; bg: string; text: string; desc: string }> = {
+  FLEET_MANAGER: { label: "Fleet Manager", bg: "bg-indigo-500/10", text: "text-indigo-400", desc: "Full administrative access" },
+  DRIVER: { label: "Driver", bg: "bg-emerald-500/10", text: "text-emerald-400", desc: "Operates fleet vehicles" },
+  SAFETY_OFFICER: { label: "Safety Officer", bg: "bg-amber-500/10", text: "text-amber-400", desc: "Manages safety metrics & scorecards" },
+  FINANCIAL_ANALYST: { label: "Financial Analyst", bg: "bg-blue-500/10", text: "text-blue-400", desc: "Oversees trip expenses & costs" },
 };
 
 const DRIVER_STATUSES = ["AVAILABLE", "ON_TRIP", "OFF_DUTY", "SUSPENDED"];
 const STATUS_COLORS: Record<string, string> = {
-  AVAILABLE: "#10b981",
-  ON_TRIP: "#3b82f6",
-  OFF_DUTY: "#64748b",
-  SUSPENDED: "#ef4444",
+  AVAILABLE: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  ON_TRIP: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  OFF_DUTY: "bg-slate-500/10 text-slate-400 border-slate-500/20",
+  SUSPENDED: "bg-red-500/10 text-red-400 border-red-500/20",
 };
 
 export default function UsersManager({ initialUsers, currentUserId }: UsersManagerProps) {
@@ -57,7 +58,6 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
   const [formErrors, setFormErrors] = useState<Record<string, string[]>>({});
   const [serverError, setServerError] = useState<string | null>(null);
 
-  // Filtered Users
   const filteredUsers = users.filter((u) => {
     const term = search.toLowerCase();
     return (
@@ -68,16 +68,9 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
   });
 
   const resetForm = () => {
-    setName("");
-    setEmail("");
-    setPhone("");
-    setPassword("");
-    setRole("DRIVER");
-    setLicenseNumber("");
-    setLicenseCategory("");
-    setLicenseExpiryDate("");
-    setFormErrors({});
-    setServerError(null);
+    setName(""); setEmail(""); setPhone(""); setPassword(""); setRole("DRIVER");
+    setLicenseNumber(""); setLicenseCategory(""); setLicenseExpiryDate("");
+    setFormErrors({}); setServerError(null);
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -121,16 +114,13 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
 
   const handleDeleteUser = async (id: string) => {
     if (!confirm("Are you sure you want to delete this user?")) return;
-
     try {
       const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
       const data = await res.json();
-
       if (!res.ok) {
         alert(data.error || "Failed to delete user");
         return;
       }
-
       setUsers(users.filter((u) => u.id !== id));
       router.refresh();
     } catch (err) {
@@ -161,111 +151,96 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
   };
 
   return (
-    <div className="users-root">
-      {/* Header controls */}
-      <div className="users-header">
-        <div className="search-wrap">
-          <svg className="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
           <input
             type="text"
             placeholder="Search users by name, email, or role..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="search-input"
+            className="w-full h-11 bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 text-slate-200 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-500"
           />
         </div>
 
-        <button onClick={() => setIsModalOpen(true)} className="add-user-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
+        <button 
+          onClick={() => setIsModalOpen(true)} 
+          className="h-11 bg-indigo-600 hover:bg-indigo-700 text-white px-5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors shadow-lg shadow-indigo-500/20 shrink-0"
+        >
+          <Plus size={18} />
           Add New User
         </button>
       </div>
 
-      {/* Users table */}
-      <div className="table-card">
-        <div className="table-responsive">
-          <table className="users-table">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
-              <tr>
-                <th>User Details</th>
-                <th>Role</th>
-                <th>Driver Status</th>
-                <th>Registered</th>
-                <th>Actions</th>
+              <tr className="border-b border-slate-800 bg-slate-950/50">
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User Details</th>
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Role</th>
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Driver Status</th>
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Registered</th>
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-800/60">
               {filteredUsers.length > 0 ? (
                 filteredUsers.map((user) => (
-                  <tr key={user.id} className="user-row">
-                    <td>
-                      <div className="user-details-cell">
-                        <div className="user-avatar-chip">
+                  <tr key={user.id} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 font-bold border border-slate-700/50">
                           {user.name.charAt(0).toUpperCase()}
                         </div>
-                        <div className="user-name-email">
-                          <span className="user-name-lbl">{user.name}</span>
-                          <span className="user-email-lbl">{user.email}</span>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-slate-200">{user.name}</span>
+                          <span className="text-xs text-slate-500">{user.email}</span>
                         </div>
                       </div>
                     </td>
-                    <td>
-                      <span className="role-chip" style={{ "--role-color": ROLE_DETAILS[user.role]?.color } as React.CSSProperties}>
+                    <td className="px-6 py-4">
+                      <span className={`text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full uppercase ${ROLE_DETAILS[user.role]?.bg} ${ROLE_DETAILS[user.role]?.text}`}>
                         {ROLE_DETAILS[user.role]?.label || user.role}
                       </span>
                     </td>
-                    <td>
+                    <td className="px-6 py-4">
                       {user.role === "DRIVER" && user.driver ? (
                         <select
-                          className="status-dropdown"
+                          className={`text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full border outline-none cursor-pointer ${STATUS_COLORS[user.driver.status]}`}
                           value={user.driver.status}
                           onChange={(e) => handleStatusChange(user.id, e.target.value)}
-                          style={{ "--status-color": STATUS_COLORS[user.driver.status] } as React.CSSProperties}
                         >
                           {DRIVER_STATUSES.map(s => (
-                            <option key={s} value={s}>{s}</option>
+                            <option key={s} value={s} className="bg-slate-900 text-slate-200">{s}</option>
                           ))}
                         </select>
                       ) : (
-                        <span className="text-slate-500 text-sm">—</span>
+                        <span className="text-slate-600 text-sm pl-4">&mdash;</span>
                       )}
                     </td>
-                    <td className="user-date-cell">
-                      {new Date(user.createdAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
+                    <td className="px-6 py-4 text-sm text-slate-400">
+                      {new Date(user.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </td>
-                    <td>
+                    <td className="px-6 py-4 text-right">
                       {user.id !== currentUserId ? (
                         <button
                           onClick={() => handleDeleteUser(user.id)}
-                          className="delete-user-btn"
+                          className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors inline-flex"
                           title="Delete User"
                         >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                            <line x1="10" y1="11" x2="10" y2="17" />
-                            <line x1="14" y1="11" x2="14" y2="17" />
-                          </svg>
+                          <Trash2 size={16} />
                         </button>
                       ) : (
-                        <span className="self-badge">You</span>
+                        <span className="text-[10px] font-bold bg-slate-800 text-slate-400 px-2 py-1 rounded-md">You</span>
                       )}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="empty-cell">
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500 text-sm">
                     No users found matching your search.
                   </td>
                 </tr>
@@ -275,573 +250,104 @@ export default function UsersManager({ initialUsers, currentUserId }: UsersManag
         </div>
       </div>
 
-      {/* Add User Modal */}
       {isModalOpen && (
-        <div className="modal-backdrop">
-          <div className="modal-content modal-large">
-            <div className="modal-header">
-              <h3 className="modal-title">Create New Account</h3>
-              <button onClick={() => { setIsModalOpen(false); resetForm(); }} className="close-modal-btn">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50">
+              <h3 className="text-lg font-bold text-slate-100">Create New Account</h3>
+              <button 
+                onClick={() => { setIsModalOpen(false); resetForm(); }}
+                className="text-slate-500 hover:text-slate-300 transition-colors p-1"
+              >
+                <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} className="modal-form">
+            <form onSubmit={handleCreateUser} className="p-6 flex flex-col gap-5">
               {serverError && (
-                <div className="modal-error-banner">
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-xl">
                   {serverError}
                 </div>
               )}
 
-              <div className="form-grid">
-                {/* Name */}
-                <div className="form-group">
-                  <label className="form-label">Full Name</label>
-                  <input
-                    type="text"
-                    placeholder="John Doe"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className={`form-input ${formErrors.name ? "input-err" : ""}`}
-                  />
-                  {formErrors.name && (
-                    <p className="field-err-lbl">{formErrors.name[0]}</p>
-                  )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Full Name</label>
+                  <input type="text" placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} className={`bg-slate-950 border text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${formErrors.name ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-slate-800 focus:border-indigo-500 focus:ring-indigo-500"}`} />
+                  {formErrors.name && <p className="text-[10px] text-red-400">{formErrors.name[0]}</p>}
                 </div>
 
-                {/* Email */}
-                <div className="form-group">
-                  <label className="form-label">Email Address</label>
-                  <input
-                    type="email"
-                    placeholder="john@company.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={`form-input ${formErrors.email ? "input-err" : ""}`}
-                  />
-                  {formErrors.email && (
-                    <p className="field-err-lbl">{formErrors.email[0]}</p>
-                  )}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Email Address</label>
+                  <input type="email" placeholder="john@company.com" value={email} onChange={(e) => setEmail(e.target.value)} className={`bg-slate-950 border text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${formErrors.email ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-slate-800 focus:border-indigo-500 focus:ring-indigo-500"}`} />
+                  {formErrors.email && <p className="text-[10px] text-red-400">{formErrors.email[0]}</p>}
                 </div>
 
-                {/* Phone */}
-                <div className="form-group">
-                  <label className="form-label">Phone Number (Optional)</label>
-                  <input
-                    type="text"
-                    placeholder="+15551234567"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className={`form-input ${formErrors.phone ? "input-err" : ""}`}
-                  />
-                  {formErrors.phone && (
-                    <p className="field-err-lbl">{formErrors.phone[0]}</p>
-                  )}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Phone Number (Optional)</label>
+                  <input type="text" placeholder="+15551234567" value={phone} onChange={(e) => setPhone(e.target.value)} className={`bg-slate-950 border text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${formErrors.phone ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-slate-800 focus:border-indigo-500 focus:ring-indigo-500"}`} />
+                  {formErrors.phone && <p className="text-[10px] text-red-400">{formErrors.phone[0]}</p>}
                 </div>
 
-                {/* Password */}
-                <div className="form-group">
-                  <label className="form-label">Password</label>
-                  <input
-                    type="password"
-                    placeholder="Min. 8 chars, 1 uppercase, 1 digit"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className={`form-input ${formErrors.password ? "input-err" : ""}`}
-                  />
-                  {formErrors.password && (
-                    <p className="field-err-lbl">{formErrors.password[0]}</p>
-                  )}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Password</label>
+                  <input type="password" placeholder="Min. 8 chars, 1 uppercase, 1 digit" value={password} onChange={(e) => setPassword(e.target.value)} className={`bg-slate-950 border text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${formErrors.password ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-slate-800 focus:border-indigo-500 focus:ring-indigo-500"}`} />
+                  {formErrors.password && <p className="text-[10px] text-red-400">{formErrors.password[0]}</p>}
                 </div>
 
-                {/* Role */}
-                <div className="form-group col-span-2">
-                  <label className="form-label">System Role</label>
-                  <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                    className="form-select"
-                  >
+                <div className="flex flex-col gap-1.5 sm:col-span-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">System Role</label>
+                  <select value={role} onChange={(e) => setRole(e.target.value)} className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
                     {Object.entries(ROLE_DETAILS).map(([key, value]) => (
-                      <option key={key} value={key}>
-                        {value.label} — {value.desc}
-                      </option>
+                      <option key={key} value={key} className="bg-slate-900">{value.label} — {value.desc}</option>
                     ))}
                   </select>
                 </div>
-                
-                {/* Driver Specific Fields */}
+
                 {role === "DRIVER" && (
                   <>
-                    <div className="form-group">
-                      <label className="form-label">License Number</label>
-                      <input
-                        type="text"
-                        placeholder="D-1234567"
-                        value={licenseNumber}
-                        onChange={(e) => setLicenseNumber(e.target.value)}
-                        className={`form-input ${formErrors.licenseNumber ? "input-err" : ""}`}
-                      />
-                      {formErrors.licenseNumber && (
-                        <p className="field-err-lbl">{formErrors.licenseNumber[0]}</p>
-                      )}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-slate-500">License Number</label>
+                      <input type="text" placeholder="D-1234567" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} className={`bg-slate-950 border text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${formErrors.licenseNumber ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-slate-800 focus:border-indigo-500 focus:ring-indigo-500"}`} />
+                      {formErrors.licenseNumber && <p className="text-[10px] text-red-400">{formErrors.licenseNumber[0]}</p>}
                     </div>
 
-                    <div className="form-group">
-                      <label className="form-label">License Category</label>
-                      <input
-                        type="text"
-                        placeholder="CDL Class A"
-                        value={licenseCategory}
-                        onChange={(e) => setLicenseCategory(e.target.value)}
-                        className={`form-input ${formErrors.licenseCategory ? "input-err" : ""}`}
-                      />
-                      {formErrors.licenseCategory && (
-                        <p className="field-err-lbl">{formErrors.licenseCategory[0]}</p>
-                      )}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-slate-500">License Category</label>
+                      <input type="text" placeholder="CDL Class A" value={licenseCategory} onChange={(e) => setLicenseCategory(e.target.value)} className={`bg-slate-950 border text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${formErrors.licenseCategory ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-slate-800 focus:border-indigo-500 focus:ring-indigo-500"}`} />
+                      {formErrors.licenseCategory && <p className="text-[10px] text-red-400">{formErrors.licenseCategory[0]}</p>}
                     </div>
 
-                    <div className="form-group col-span-2">
-                      <label className="form-label">License Expiry Date</label>
-                      <input
-                        type="date"
-                        value={licenseExpiryDate}
-                        onChange={(e) => setLicenseExpiryDate(e.target.value)}
-                        className={`form-input ${formErrors.licenseExpiryDate ? "input-err" : ""}`}
-                      />
-                      {formErrors.licenseExpiryDate && (
-                        <p className="field-err-lbl">{formErrors.licenseExpiryDate[0]}</p>
-                      )}
+                    <div className="flex flex-col gap-1.5 sm:col-span-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-slate-500">License Expiry Date</label>
+                      <input type="date" value={licenseExpiryDate} onChange={(e) => setLicenseExpiryDate(e.target.value)} className={`bg-slate-950 border text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 transition-all ${formErrors.licenseExpiryDate ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-slate-800 focus:border-indigo-500 focus:ring-indigo-500"}`} />
+                      {formErrors.licenseExpiryDate && <p className="text-[10px] text-red-400">{formErrors.licenseExpiryDate[0]}</p>}
                     </div>
                   </>
                 )}
               </div>
 
-              <div className="modal-actions">
-                <button
-                  type="button"
+              <div className="flex justify-end gap-3 mt-2 border-t border-slate-800 pt-5">
+                <button 
+                  type="button" 
                   onClick={() => { setIsModalOpen(false); resetForm(); }}
-                  className="modal-cancel-btn"
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
                   disabled={isPending}
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="modal-save-btn"
+                <button 
+                  type="submit" 
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-bold transition-colors flex items-center justify-center min-w-[140px] disabled:opacity-70"
                   disabled={isPending}
                 >
-                  {isPending ? <span className="save-spinner" /> : "Create User"}
+                  {isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : "Create User"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
-      <style>{`
-        .users-root {
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
-        }
-
-        /* Controls */
-        .users-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 16px;
-        }
-
-        .search-wrap {
-          position: relative;
-          flex: 1;
-          max-width: 480px;
-        }
-        .search-icon {
-          position: absolute;
-          left: 14px;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #475569;
-        }
-        .search-input {
-          width: 100%;
-          height: 44px;
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 10px;
-          padding-left: 44px;
-          padding-right: 16px;
-          color: #f1f5f9;
-          font-family: inherit;
-          font-size: 14px;
-          transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        .search-input:focus {
-          outline: none;
-          border-color: rgba(99,102,241,0.5);
-          box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
-        }
-
-        .add-user-btn {
-          height: 44px;
-          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-          border: none;
-          border-radius: 10px;
-          color: #fff;
-          font-size: 14px;
-          font-weight: 600;
-          padding: 0 20px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          cursor: pointer;
-          box-shadow: 0 4px 16px rgba(99,102,241,0.25);
-          transition: transform 0.15s, opacity 0.2s;
-        }
-        .add-user-btn:hover {
-          opacity: 0.95;
-          transform: translateY(-1px);
-        }
-        .add-user-btn:active {
-          transform: translateY(0);
-        }
-
-        /* Table Card */
-        .table-card {
-          background: rgba(15,15,25,0.75);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255,255,255,0.05);
-          border-radius: 16px;
-          overflow: hidden;
-          box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
-        }
-
-        .table-responsive {
-          width: 100%;
-          overflow-x: auto;
-        }
-
-        .users-table {
-          width: 100%;
-          border-collapse: collapse;
-          text-align: left;
-        }
-
-        .users-table th {
-          background: rgba(255,255,255,0.02);
-          padding: 16px 24px;
-          font-size: 12px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          color: #475569;
-          border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .user-row {
-          border-bottom: 1px solid rgba(255,255,255,0.03);
-          transition: background 0.2s;
-        }
-        .user-row:hover {
-          background: rgba(255,255,255,0.01);
-        }
-
-        .users-table td {
-          padding: 16px 24px;
-          font-size: 14px;
-          color: #cbd5e1;
-        }
-
-        .user-details-cell {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .user-avatar-chip {
-          width: 38px;
-          height: 38px;
-          border-radius: 8px;
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.08);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 700;
-          color: #f1f5f9;
-        }
-
-        .user-name-email {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-        }
-
-        .user-name-lbl {
-          font-weight: 600;
-          color: #f1f5f9;
-        }
-
-        .user-email-lbl {
-          font-size: 12px;
-          color: #64748b;
-        }
-
-        .user-phone-cell, .user-date-cell {
-          color: #94a3b8;
-        }
-
-        .role-chip {
-          font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 0.2px;
-          padding: 4px 10px;
-          border-radius: 20px;
-          background: rgba(var(--role-color), 0.12);
-          border: 1px solid var(--role-color);
-          color: var(--role-color);
-          text-transform: capitalize;
-        }
-        
-        .status-dropdown {
-          background: rgba(var(--status-color), 0.12);
-          border: 1px solid var(--status-color);
-          color: var(--status-color);
-          font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 0.2px;
-          padding: 4px 10px;
-          border-radius: 20px;
-          outline: none;
-          cursor: pointer;
-        }
-        
-        .status-dropdown option {
-          background: #0f0f18;
-          color: #cbd5e1;
-        }
-
-        .delete-user-btn {
-          background: transparent;
-          border: none;
-          color: #475569;
-          cursor: pointer;
-          padding: 6px;
-          border-radius: 6px;
-          display: inline-flex;
-          transition: color 0.2s, background-color 0.2s;
-        }
-        .delete-user-btn:hover {
-          color: #ef4444;
-          background: rgba(239,68,68,0.1);
-        }
-
-        .self-badge {
-          font-size: 11px;
-          font-weight: 600;
-          color: #475569;
-          background: rgba(255,255,255,0.03);
-          padding: 3px 8px;
-          border-radius: 6px;
-        }
-
-        .empty-cell {
-          text-align: center;
-          padding: 48px !important;
-          color: #64748b;
-        }
-
-        /* Modal styling */
-        .modal-backdrop {
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.6);
-          backdrop-filter: blur(4px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 50;
-        }
-
-        .modal-content {
-          width: 100%;
-          max-width: 460px;
-          background: #0f0f18;
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 18px;
-          box-shadow: 0 20px 50px rgba(0,0,0,0.6);
-          display: flex;
-          flex-direction: column;
-          animation: scaleUp 0.2s ease;
-        }
-        
-        .modal-large {
-          max-width: 600px;
-        }
-
-        @keyframes scaleUp {
-          from { opacity: 0; transform: scale(0.96); }
-          to { opacity: 1; transform: scale(1); }
-        }
-
-        .modal-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 20px 24px;
-          border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .modal-title {
-          font-size: 17px;
-          font-weight: 700;
-          color: #f1f5f9;
-        }
-
-        .close-modal-btn {
-          background: none;
-          border: none;
-          color: #475569;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 4px;
-          border-radius: 6px;
-          transition: color 0.2s;
-        }
-        .close-modal-btn:hover {
-          color: #94a3b8;
-        }
-
-        .modal-form {
-          padding: 24px;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-        
-        .form-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 16px;
-        }
-
-        .modal-error-banner {
-          background: rgba(239, 68, 68, 0.1);
-          border: 1px solid rgba(239, 68, 68, 0.2);
-          border-radius: 8px;
-          padding: 10px 14px;
-          font-size: 13px;
-          color: #f87171;
-        }
-
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-        
-        .col-span-2 {
-          grid-column: span 2;
-        }
-
-        .form-label {
-          font-size: 12.5px;
-          font-weight: 500;
-          color: #94a3b8;
-        }
-
-        .form-input, .form-select {
-          height: 42px;
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 8px;
-          padding: 0 12px;
-          color: #f1f5f9;
-          font-family: inherit;
-          font-size: 14px;
-          transition: border-color 0.2s;
-        }
-        .form-select option {
-          background: #0f0f18;
-          color: #cbd5e1;
-        }
-        .form-input:focus, .form-select:focus {
-          outline: none;
-          border-color: rgba(99,102,241,0.5);
-        }
-        .form-input.input-err {
-          border-color: rgba(239,68,68,0.5);
-        }
-
-        .field-err-lbl {
-          font-size: 11px;
-          color: #ef4444;
-        }
-
-        .modal-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: 10px;
-          margin-top: 12px;
-        }
-
-        .modal-cancel-btn {
-          height: 40px;
-          background: transparent;
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 8px;
-          color: #cbd5e1;
-          font-size: 13.5px;
-          font-weight: 600;
-          padding: 0 16px;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-        .modal-cancel-btn:hover {
-          background: rgba(255,255,255,0.02);
-        }
-
-        .modal-save-btn {
-          height: 40px;
-          background: #6366f1;
-          border: none;
-          border-radius: 8px;
-          color: #fff;
-          font-size: 13.5px;
-          font-weight: 600;
-          padding: 0 16px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: opacity 0.2s;
-        }
-        .modal-save-btn:hover {
-          opacity: 0.95;
-        }
-        .modal-save-btn:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .save-spinner {
-          width: 18px;
-          height: 18px;
-          border: 2px solid rgba(255,255,255,0.3);
-          border-top-color: #fff;
-          border-radius: 50%;
-          animation: spin 0.7s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
 }

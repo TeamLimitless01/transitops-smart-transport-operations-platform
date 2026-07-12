@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Search, MapPin, Navigation, Play, X, Loader2, Info } from "lucide-react";
 
 interface Vehicle {
   id: string;
@@ -51,11 +52,11 @@ interface TripsManagerProps {
   drivers: Driver[];
 }
 
-const STATUS_META: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: "Draft", color: "#64748b" },
-  DISPATCHED: { label: "Dispatched", color: "#3b82f6" },
-  COMPLETED: { label: "Completed", color: "#10b981" },
-  CANCELLED: { label: "Cancelled", color: "#ef4444" },
+const STATUS_META: Record<string, { label: string; color: string; border: string }> = {
+  DRAFT: { label: "Draft", color: "text-slate-400 bg-slate-500/10", border: "border-slate-500" },
+  DISPATCHED: { label: "Dispatched", color: "text-blue-400 bg-blue-500/10", border: "border-blue-500" },
+  COMPLETED: { label: "Completed", color: "text-emerald-400 bg-emerald-500/10", border: "border-emerald-500" },
+  CANCELLED: { label: "Cancelled", color: "text-red-400 bg-red-500/10", border: "border-red-500" },
 };
 
 export default function TripsManager({ initialTrips, vehicles, drivers }: TripsManagerProps) {
@@ -126,98 +127,94 @@ export default function TripsManager({ initialTrips, vehicles, drivers }: TripsM
     expenses.reduce((s, e) => s + e.cost, 0);
 
   return (
-    <div className="trips-root">
+    <div className="flex flex-col gap-6">
       {/* Header */}
-      <div className="trips-header">
-        <div className="search-wrap">
-          <svg className="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
           <input
             type="text"
             placeholder="Search by route, driver, or vehicle..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="search-input"
+            className="w-full h-11 bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 text-slate-200 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-500"
           />
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="dispatch-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polygon points="5 3 19 12 5 21 5 3" />
-          </svg>
+        <button 
+          onClick={() => setIsModalOpen(true)} 
+          className="h-11 bg-indigo-600 hover:bg-indigo-700 text-white px-5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors shadow-lg shadow-indigo-500/20 shrink-0"
+        >
+          <Play size={18} fill="currentColor" />
           Dispatch Trip
         </button>
       </div>
 
       {/* Stats row */}
-      <div className="stats-row">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {(["DISPATCHED", "COMPLETED", "CANCELLED"] as const).map((s) => {
           const count = trips.filter((t) => t.status === s).length;
           return (
-            <div key={s} className="stat-card" style={{ "--s-color": STATUS_META[s].color } as React.CSSProperties}>
-              <span className="stat-count">{count}</span>
-              <span className="stat-label">{STATUS_META[s].label}</span>
+            <div key={s} className={`bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col gap-1 shadow-lg border-l-4 ${STATUS_META[s].border}`}>
+              <span className={`text-2xl font-bold ${STATUS_META[s].color.split(' ')[0]}`}>{count}</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{STATUS_META[s].label}</span>
             </div>
           );
         })}
-        <div className="stat-card" style={{ "--s-color": "#a78bfa" } as React.CSSProperties}>
-          <span className="stat-count">{trips.length}</span>
-          <span className="stat-label">Total Trips</span>
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col gap-1 shadow-lg border-l-4 border-indigo-500">
+          <span className="text-2xl font-bold text-indigo-400">{trips.length}</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Trips</span>
         </div>
       </div>
 
       {/* Trip Cards */}
       {filteredTrips.length === 0 ? (
-        <div className="empty-state">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.3">
-            <path d="M3 17l2-4h14l2 4" /><path d="M5 17v2h14v-2" /><path d="M7 13l1-5h8l1 5" />
-          </svg>
-          <p>No trips found. Dispatch your first trip above.</p>
+        <div className="flex flex-col items-center justify-center gap-4 py-20 px-4 bg-slate-900/50 border border-dashed border-slate-800 rounded-2xl text-slate-500 text-center">
+          <Navigation className="h-12 w-12 text-slate-700" />
+          <p className="text-sm">No trips found. Dispatch your first trip above.</p>
         </div>
       ) : (
-        <div className="trips-grid">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {filteredTrips.map((trip) => (
-            <div key={trip.id} className="trip-card">
-              <div className="trip-card-header">
-                <div className="route-info">
-                  <span className="route-source">{trip.source}</span>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="route-arrow">
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                  <span className="route-dest">{trip.destination}</span>
+            <div key={trip.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col gap-5 shadow-xl hover:-translate-y-1 hover:border-slate-700 transition-all group">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className="text-sm font-bold text-slate-100 truncate">{trip.source}</span>
+                  <div className="text-slate-600 shrink-0">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-bold text-slate-100 truncate">{trip.destination}</span>
                 </div>
-                <span
-                  className="status-pill"
-                  style={{ "--s-color": STATUS_META[trip.status]?.color || "#64748b" } as React.CSSProperties}
-                >
+                <span className={`text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full border border-current ${STATUS_META[trip.status]?.color || "text-slate-400 bg-slate-500/10"} uppercase shrink-0`}>
                   {STATUS_META[trip.status]?.label || trip.status}
                 </span>
               </div>
 
-              <div className="trip-meta-grid">
-                <div className="meta-item">
-                  <span className="meta-label">Driver</span>
-                  <span className="meta-value">{trip.driver.name}</span>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-4 pt-4 border-t border-slate-800">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Driver</span>
+                  <span className="text-xs text-slate-300 font-medium truncate">{trip.driver.name}</span>
                 </div>
-                <div className="meta-item">
-                  <span className="meta-label">Vehicle</span>
-                  <span className="meta-value">{trip.vehicle.name} · {trip.vehicle.registrationNumber}</span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Vehicle</span>
+                  <span className="text-xs text-slate-300 font-medium truncate">{trip.vehicle.name} &bull; {trip.vehicle.registrationNumber}</span>
                 </div>
-                <div className="meta-item">
-                  <span className="meta-label">Cargo</span>
-                  <span className="meta-value">{trip.cargoWeight} kg</span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Cargo</span>
+                  <span className="text-xs text-slate-300 font-medium">{trip.cargoWeight} kg</span>
                 </div>
-                <div className="meta-item">
-                  <span className="meta-label">Distance</span>
-                  <span className="meta-value">{trip.plannedDistance} km planned</span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Distance</span>
+                  <span className="text-xs text-slate-300 font-medium">{trip.plannedDistance} km planned</span>
                 </div>
-                <div className="meta-item">
-                  <span className="meta-label">Expenses</span>
-                  <span className="meta-value">{trip.expenses.length} entries · ${totalCost(trip.expenses).toFixed(2)}</span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Expenses</span>
+                  <span className="text-xs text-slate-300 font-medium">{trip.expenses.length} entries &bull; ${totalCost(trip.expenses).toFixed(2)}</span>
                 </div>
-                <div className="meta-item">
-                  <span className="meta-label">Started</span>
-                  <span className="meta-value">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Started</span>
+                  <span className="text-xs text-slate-300 font-medium">
                     {trip.startTime
                       ? new Date(trip.startTime).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
                       : "—"}
@@ -231,253 +228,105 @@ export default function TripsManager({ initialTrips, vehicles, drivers }: TripsM
 
       {/* Dispatch Modal */}
       {isModalOpen && (
-        <div className="modal-backdrop">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3 className="modal-title">Dispatch New Trip</h3>
-              <button onClick={() => { setIsModalOpen(false); resetForm(); }} className="close-btn">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50">
+              <h3 className="text-lg font-bold text-slate-100">Dispatch New Trip</h3>
+              <button 
+                onClick={() => { setIsModalOpen(false); resetForm(); }}
+                className="text-slate-500 hover:text-slate-300 transition-colors p-1"
+              >
+                <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleDispatch} className="modal-form">
-              {serverError && <div className="error-banner">{serverError}</div>}
+            <form onSubmit={handleDispatch} className="p-6 flex flex-col gap-5">
+              {serverError && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-xl flex items-center gap-2">
+                  <Info size={16} />
+                  {serverError}
+                </div>
+              )}
 
-              <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">Source / Origin</label>
-                  <input type="text" placeholder="City or depot" value={source} onChange={(e) => setSource(e.target.value)} className="form-input" required />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Source / Origin</label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600" />
+                    <input type="text" placeholder="City or depot" value={source} onChange={(e) => setSource(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600" required />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Destination</label>
-                  <input type="text" placeholder="City or address" value={destination} onChange={(e) => setDestination(e.target.value)} className="form-input" required />
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Destination</label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600" />
+                    <input type="text" placeholder="City or address" value={destination} onChange={(e) => setDestination(e.target.value)} className="w-full bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl pl-9 pr-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600" required />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Cargo Weight (kg)</label>
-                  <input type="number" placeholder="e.g. 2500" min="0" value={cargoWeight} onChange={(e) => setCargoWeight(e.target.value)} className="form-input" required />
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Cargo Weight (kg)</label>
+                  <input type="number" placeholder="e.g. 2500" min="0" value={cargoWeight} onChange={(e) => setCargoWeight(e.target.value)} className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600" required />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Planned Distance (km)</label>
-                  <input type="number" placeholder="e.g. 340" min="0" value={plannedDistance} onChange={(e) => setPlannedDistance(e.target.value)} className="form-input" required />
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Planned Distance (km)</label>
+                  <input type="number" placeholder="e.g. 340" min="0" value={plannedDistance} onChange={(e) => setPlannedDistance(e.target.value)} className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600" required />
                 </div>
 
-                <div className="form-group col-span-2">
-                  <label className="form-label">
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
                     Assign Vehicle
-                    <span className="avail-badge">{availableVehicles.length} available</span>
+                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[10px]">{availableVehicles.length} available</span>
                   </label>
-                  <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} className="form-select" required>
-                    <option value="">— Select a vehicle —</option>
+                  <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" required>
+                    <option value="" className="text-slate-500">— Select a vehicle —</option>
                     {availableVehicles.map((v) => (
-                      <option key={v.id} value={v.id}>{v.name} · {v.registrationNumber} ({v.type})</option>
+                      <option key={v.id} value={v.id} className="bg-slate-900">{v.name} &bull; {v.registrationNumber} ({v.type})</option>
                     ))}
                   </select>
                   {availableVehicles.length === 0 && (
-                    <p className="hint-warn">No vehicles currently available</p>
+                    <p className="text-[10px] text-amber-400 flex items-center gap-1 mt-1"><Info size={12}/> No vehicles currently available</p>
                   )}
                 </div>
 
-                <div className="form-group col-span-2">
-                  <label className="form-label">
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
                     Assign Driver
-                    <span className="avail-badge">{availableDrivers.length} available</span>
+                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[10px]">{availableDrivers.length} available</span>
                   </label>
-                  <select value={driverId} onChange={(e) => setDriverId(e.target.value)} className="form-select" required>
-                    <option value="">— Select a driver —</option>
+                  <select value={driverId} onChange={(e) => setDriverId(e.target.value)} className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" required>
+                    <option value="" className="text-slate-500">— Select a driver —</option>
                     {availableDrivers.map((d) => (
-                      <option key={d.id} value={d.id}>{d.name} · {d.licenseNumber}</option>
+                      <option key={d.id} value={d.id} className="bg-slate-900">{d.name} &bull; {d.licenseNumber}</option>
                     ))}
                   </select>
                   {availableDrivers.length === 0 && (
-                    <p className="hint-warn">No drivers currently available</p>
+                    <p className="text-[10px] text-amber-400 flex items-center gap-1 mt-1"><Info size={12}/> No drivers currently available</p>
                   )}
                 </div>
               </div>
 
-              <div className="modal-actions">
-                <button type="button" onClick={() => { setIsModalOpen(false); resetForm(); }} className="cancel-btn" disabled={isPending}>Cancel</button>
-                <button type="submit" className="dispatch-submit-btn" disabled={isPending || availableVehicles.length === 0 || availableDrivers.length === 0}>
-                  {isPending ? <span className="spinner" /> : (
-                    <>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polygon points="5 3 19 12 5 21 5 3" />
-                      </svg>
-                      Dispatch Trip
-                    </>
-                  )}
+              <div className="flex justify-end gap-3 mt-2 border-t border-slate-800 pt-5">
+                <button 
+                  type="button" 
+                  onClick={() => { setIsModalOpen(false); resetForm(); }}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
+                  disabled={isPending}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-bold transition-colors flex items-center justify-center min-w-[140px] gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isPending || availableVehicles.length === 0 || availableDrivers.length === 0}
+                >
+                  {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play size={16} fill="currentColor" />}
+                  Dispatch Trip
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
-      <style>{`
-        .trips-root { display: flex; flex-direction: column; gap: 24px; }
-
-        .trips-header {
-          display: flex; align-items: center; justify-content: space-between; gap: 16px;
-        }
-        .search-wrap { position: relative; flex: 1; max-width: 480px; }
-        .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #475569; }
-        .search-input {
-          width: 100%; height: 44px;
-          background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 10px; padding-left: 44px; padding-right: 16px;
-          color: #f1f5f9; font-family: inherit; font-size: 14px;
-          transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        .search-input:focus {
-          outline: none; border-color: rgba(99,102,241,0.5);
-          box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
-        }
-        .dispatch-btn {
-          height: 44px;
-          background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-          border: none; border-radius: 10px; color: #fff;
-          font-size: 14px; font-weight: 600; padding: 0 20px;
-          display: flex; align-items: center; gap: 8px; cursor: pointer;
-          box-shadow: 0 4px 16px rgba(59,130,246,0.25);
-          transition: transform 0.15s, opacity 0.2s;
-        }
-        .dispatch-btn:hover { opacity: 0.95; transform: translateY(-1px); }
-
-        /* Stats */
-        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-        .stat-card {
-          background: rgba(15,15,25,0.75);
-          border: 1px solid rgba(255,255,255,0.05);
-          border-left: 3px solid var(--s-color);
-          border-radius: 12px; padding: 16px 20px;
-          display: flex; flex-direction: column; gap: 4px;
-        }
-        .stat-count { font-size: 26px; font-weight: 800; color: var(--s-color); }
-        .stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; }
-
-        /* Empty */
-        .empty-state {
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          gap: 16px; padding: 80px 20px; color: #475569;
-          background: rgba(15,15,25,0.5); border: 1px dashed rgba(255,255,255,0.06);
-          border-radius: 16px; text-align: center;
-        }
-        .empty-state p { font-size: 14px; }
-
-        /* Trip grid */
-        .trips-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 16px; }
-        .trip-card {
-          background: rgba(15,15,25,0.75);
-          border: 1px solid rgba(255,255,255,0.05);
-          border-radius: 16px; padding: 20px 24px;
-          display: flex; flex-direction: column; gap: 16px;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-          transition: transform 0.2s, border-color 0.2s;
-        }
-        .trip-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.1); }
-
-        .trip-card-header {
-          display: flex; align-items: center; justify-content: space-between; gap: 12px;
-        }
-        .route-info { display: flex; align-items: center; gap: 8px; }
-        .route-source, .route-dest { font-size: 15px; font-weight: 700; color: #f1f5f9; }
-        .route-arrow { color: #475569; flex-shrink: 0; }
-        .status-pill {
-          font-size: 10px; font-weight: 700; letter-spacing: 0.4px;
-          padding: 3px 10px; border-radius: 20px;
-          background: rgba(var(--s-color), 0.12);
-          border: 1px solid var(--s-color); color: var(--s-color);
-          white-space: nowrap; text-transform: uppercase;
-        }
-
-        .trip-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; }
-        .meta-item { display: flex; flex-direction: column; gap: 2px; }
-        .meta-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: #475569; }
-        .meta-value { font-size: 13px; color: #94a3b8; }
-
-        /* Modal */
-        .modal-backdrop {
-          position: fixed; inset: 0; background: rgba(0,0,0,0.65);
-          backdrop-filter: blur(4px); display: flex; align-items: center;
-          justify-content: center; z-index: 50;
-        }
-        .modal-content {
-          width: 100%; max-width: 580px;
-          background: #0d0d1a; border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 18px; box-shadow: 0 24px 60px rgba(0,0,0,0.7);
-          animation: scaleUp 0.2s ease;
-        }
-        @keyframes scaleUp { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
-
-        .modal-header {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 22px 26px; border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-        .modal-title { font-size: 17px; font-weight: 700; color: #f1f5f9; }
-        .close-btn {
-          background: none; border: none; color: #475569; cursor: pointer;
-          padding: 4px; border-radius: 6px; display: flex; transition: color 0.2s;
-        }
-        .close-btn:hover { color: #94a3b8; }
-
-        .modal-form { padding: 26px; display: flex; flex-direction: column; gap: 20px; }
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .form-group { display: flex; flex-direction: column; gap: 7px; }
-        .col-span-2 { grid-column: span 2; }
-        .form-label {
-          font-size: 12px; font-weight: 600; color: #64748b;
-          display: flex; align-items: center; gap: 8px;
-        }
-        .avail-badge {
-          font-size: 10px; background: rgba(16,185,129,0.12);
-          border: 1px solid rgba(16,185,129,0.3); color: #10b981;
-          padding: 2px 8px; border-radius: 20px;
-        }
-        .form-input, .form-select {
-          height: 42px;
-          background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 8px; padding: 0 12px;
-          color: #f1f5f9; font-family: inherit; font-size: 14px;
-          transition: border-color 0.2s;
-        }
-        .form-select option { background: #0d0d1a; color: #cbd5e1; }
-        .form-input:focus, .form-select:focus {
-          outline: none; border-color: rgba(99,102,241,0.5);
-        }
-        .hint-warn { font-size: 11px; color: #f59e0b; margin-top: 2px; }
-        .error-banner {
-          background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25);
-          border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #f87171;
-        }
-
-        .modal-actions {
-          display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px;
-        }
-        .cancel-btn {
-          height: 40px; background: transparent;
-          border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
-          color: #cbd5e1; font-size: 13.5px; font-weight: 600;
-          padding: 0 16px; cursor: pointer; transition: background 0.2s;
-        }
-        .cancel-btn:hover { background: rgba(255,255,255,0.02); }
-        .dispatch-submit-btn {
-          height: 40px;
-          background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-          border: none; border-radius: 8px; color: #fff;
-          font-size: 13.5px; font-weight: 600; padding: 0 18px;
-          display: flex; align-items: center; gap: 8px;
-          cursor: pointer; transition: opacity 0.2s;
-        }
-        .dispatch-submit-btn:hover { opacity: 0.9; }
-        .dispatch-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .spinner {
-          width: 18px; height: 18px;
-          border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
-          border-radius: 50%; animation: spin 0.7s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
 }
