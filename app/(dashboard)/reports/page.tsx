@@ -13,7 +13,12 @@ export default async function ReportsPage() {
   if (!allowedRoles.includes(session.user.role)) redirect("/dashboard");
 
   const [trips, expenses, maintenance, vehicles, drivers] = await Promise.all([
-    prisma.trip.findMany({ include: { expenses: true } }),
+    prisma.trip.findMany({
+      include: {
+        expenses: true,
+        driver: { select: { name: true } },
+      },
+    }),
     prisma.expense.findMany(),
     prisma.maintenance.findMany(),
     prisma.vehicle.findMany(),
