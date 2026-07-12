@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 
+import { updateTripSchema } from "@/lib/validations/trip";
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -14,7 +16,18 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { status, actualDistance, fuelConsumed } = body;
+    const result = updateTripSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          error: "Validation failed",
+          issues: result.error.flatten().fieldErrors,
+        },
+        { status: 422 }
+      );
+    }
+
+    const { status, actualDistance, fuelConsumed } = result.data;
 
     const trip = await prisma.trip.findUnique({
       where: { id },
@@ -40,8 +53,8 @@ export async function PATCH(
         where: { id },
         data: {
           ...(status && { status }),
-          ...(actualDistance !== undefined && { actualDistance: parseFloat(actualDistance) }),
-          ...(fuelConsumed !== undefined && { fuelConsumed: parseFloat(fuelConsumed) }),
+          ...(actualDistance !== undefined && { actualDistance }),
+          ...(fuelConsumed !== undefined && { fuelConsumed }),
           ...(status === "COMPLETED" && { endTime: new Date() }),
         },
         include: {

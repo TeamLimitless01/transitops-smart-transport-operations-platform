@@ -3,12 +3,15 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import ExpensesManager from "@/components/expenses/ExpensesManager";
 
+import { hasAccess } from "@/lib/permissions";
+
 export default async function ExpensesPage() {
   const session = await auth();
   if (!session) redirect("/login");
 
-  const allowedRoles = ["FLEET_MANAGER", "ADMIN", "FINANCIAL_ANALYST"];
-  if (!allowedRoles.includes(session.user.role)) redirect("/dashboard");
+  if (!hasAccess(session.user.role, "Expenses")) {
+    redirect("/dashboard");
+  }
 
   const expenses = await prisma.expense.findMany({
     where: { type: { not: "FUEL" } },

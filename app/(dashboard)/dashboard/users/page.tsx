@@ -1,3 +1,4 @@
+import { hasAccess } from "@/lib/permissions";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -7,7 +8,7 @@ export default async function UsersPage() {
   const session = await auth();
   if (!session) redirect("/login");
 
-  if (session.user.role !== "FLEET_MANAGER") {
+  if (!hasAccess(session.user.role, "Users & Drivers")) {
     redirect("/dashboard");
   }
 

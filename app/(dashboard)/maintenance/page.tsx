@@ -3,12 +3,15 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import MaintenanceManager from "@/components/maintenance/MaintenanceManager";
 
+import { hasAccess } from "@/lib/permissions";
+
 export default async function MaintenancePage() {
   const session = await auth();
   if (!session) redirect("/login");
 
-  const allowedRoles = ["FLEET_MANAGER", "ADMIN", "FINANCIAL_ANALYST"];
-  if (!allowedRoles.includes(session.user.role)) redirect("/dashboard");
+  if (!hasAccess(session.user.role, "Maintenance")) {
+    redirect("/dashboard");
+  }
 
   const [records, vehicles] = await Promise.all([
     prisma.maintenance.findMany({

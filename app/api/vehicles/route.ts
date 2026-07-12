@@ -38,10 +38,20 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const result = vehicleSchema.safeParse(body);
+    
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Validation failed",
+          issues: result.error.flatten().fieldErrors,
+        },
+        { status: 422 }
+      );
+    }
 
-    const validatedData = vehicleSchema.parse(body);
-
-    const vehicle = await createVehicle(validatedData);
+    const vehicle = await createVehicle(result.data);
 
     return NextResponse.json(
       {
@@ -54,14 +64,13 @@ export async function POST(req: NextRequest) {
     );
   } catch (error: any) {
     console.error(error);
-
     return NextResponse.json(
       {
         success: false,
-        message: error.message,
+        message: "An unexpected error occurred",
       },
       {
-        status: 400,
+        status: 500,
       }
     );
   }

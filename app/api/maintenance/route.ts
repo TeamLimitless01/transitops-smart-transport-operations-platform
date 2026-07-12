@@ -23,6 +23,8 @@ export async function GET() {
   }
 }
 
+import { createMaintenanceSchema } from "@/lib/validations/maintenance";
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
@@ -34,11 +36,18 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { vehicleId, description, cost, startDate } = body;
-
-    if (!vehicleId || !description) {
-      return NextResponse.json({ error: "vehicleId and description are required" }, { status: 422 });
+    const result = createMaintenanceSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          error: "Validation failed",
+          issues: result.error.flatten().fieldErrors,
+        },
+        { status: 422 }
+      );
     }
+
+    const { vehicleId, description, cost, startDate } = result.data;
 
     // Check vehicle exists and is not already in maintenance or on a trip
     const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
@@ -52,7 +61,7 @@ export async function POST(req: NextRequest) {
         data: {
           vehicleId,
           description,
-          cost: cost ? parseFloat(cost) : 0,
+          cost: cost || 0,
           startDate: startDate ? new Date(startDate) : new Date(),
           status: "ACTIVE",
         },

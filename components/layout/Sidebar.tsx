@@ -9,58 +9,57 @@ import {
   Wallet,
   BarChart3,
   Droplets,
+  Settings as SettingsIcon,
   LogOut,
 } from "lucide-react";
 import { auth, signOut } from "@/auth";
+import { getPermissions } from "@/lib/permissions";
 
 const menus = [
   {
     title: "Overview",
     href: "/dashboard",
     icon: LayoutDashboard,
-    roles: ["ADMIN", "FLEET_MANAGER", "DRIVER", "SAFETY_OFFICER", "FINANCIAL_ANALYST"],
   },
   {
     title: "Users & Drivers",
     href: "/dashboard/users",
     icon: Users,
-    roles: ["ADMIN", "FLEET_MANAGER"],
   },
   {
     title: "Vehicles",
     href: "/vehicles",
     icon: Truck,
-    roles: ["ADMIN", "FLEET_MANAGER"],
   },
   {
     title: "Trips",
     href: "/trips",
     icon: Map,
-    roles: ["ADMIN", "FLEET_MANAGER", "DRIVER"],
   },
   {
     title: "Maintenance",
     href: "/maintenance",
     icon: Wrench,
-    roles: ["ADMIN", "FLEET_MANAGER", "FINANCIAL_ANALYST"],
   },
   {
     title: "Expenses",
     href: "/expences",
     icon: Wallet,
-    roles: ["ADMIN", "FLEET_MANAGER", "FINANCIAL_ANALYST"],
   },
   {
     title: "Fuel Logs",
     href: "/fuel-logs",
     icon: Droplets,
-    roles: ["ADMIN", "FLEET_MANAGER", "FINANCIAL_ANALYST"],
   },
   {
     title: "Reports",
     href: "/reports",
     icon: BarChart3,
-    roles: ["ADMIN", "FLEET_MANAGER", "FINANCIAL_ANALYST", "SAFETY_OFFICER"],
+  },
+  {
+    title: "Settings",
+    href: "/settings",
+    icon: SettingsIcon,
   },
 ];
 
@@ -70,6 +69,9 @@ export async function Sidebar() {
 
   const headersList = await headers();
   const currentPath = headersList.get("x-invoke-path") || "/dashboard";
+
+  // Load permissions dynamically
+  const permissions = getPermissions();
 
   return (
     <aside className="hidden md:flex w-64 border-r border-slate-800 bg-slate-950 flex-col">
@@ -82,7 +84,12 @@ export async function Sidebar() {
 
       <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
         {menus
-          .filter((menu) => menu.roles.includes(userRole))
+          .filter((menu) => {
+            const allowedRoles = permissions[menu.title];
+            // If no permissions defined for a tab, default to allowing it
+            if (!allowedRoles) return true;
+            return allowedRoles.includes(userRole);
+          })
           .map((menu) => {
             const Icon = menu.icon;
             const active = currentPath === menu.href || currentPath.startsWith(menu.href + "/");

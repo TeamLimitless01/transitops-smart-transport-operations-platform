@@ -5,12 +5,15 @@ import {
   BarChart3, TrendingUp, Truck, Map, Wrench, Droplets, Wallet, Users
 } from "lucide-react";
 
+import { hasAccess } from "@/lib/permissions";
+
 export default async function ReportsPage() {
   const session = await auth();
   if (!session) redirect("/login");
 
-  const allowedRoles = ["FLEET_MANAGER", "ADMIN", "FINANCIAL_ANALYST", "SAFETY_OFFICER"];
-  if (!allowedRoles.includes(session.user.role)) redirect("/dashboard");
+  if (!hasAccess(session.user.role, "Reports")) {
+    redirect("/dashboard");
+  }
 
   const [trips, expenses, maintenance, vehicles, drivers] = await Promise.all([
     prisma.trip.findMany({

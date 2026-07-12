@@ -1,3 +1,6 @@
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { hasAccess } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import VehicleTable from "@/components/vehicles/VehicleTable";
 
@@ -5,6 +8,12 @@ import VehicleTable from "@/components/vehicles/VehicleTable";
 export const dynamic = "force-dynamic";
 
 export default async function VehiclesPage() {
+  const session = await auth();
+  if (!session) redirect("/login");
+
+  if (!hasAccess(session.user.role, "Vehicles")) {
+    redirect("/dashboard");
+  }
   // Fetch vehicles initially on the server side
   const vehicles = await prisma.vehicle.findMany({
     orderBy: {

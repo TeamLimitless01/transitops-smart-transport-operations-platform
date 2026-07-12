@@ -3,9 +3,15 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import TripsManager from "@/components/trips/TripsManager";
 
+import { hasAccess } from "@/lib/permissions";
+
 export default async function TripsPage() {
   const session = await auth();
   if (!session) redirect("/login");
+
+  if (!hasAccess(session.user.role, "Trips")) {
+    redirect("/dashboard");
+  }
 
   const [trips, vehicles, drivers] = await Promise.all([
     prisma.trip.findMany({

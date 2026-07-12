@@ -26,6 +26,8 @@ export async function GET(req: NextRequest) {
   }
 }
 
+import { createExpenseSchema } from "@/lib/validations/expense";
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
@@ -34,11 +36,18 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { tripId, type, amount, description, liters, date } = body;
-
-    if (!tripId || !type || amount === undefined || !date) {
-      return NextResponse.json({ error: "tripId, type, amount, and date are required" }, { status: 422 });
+    const result = createExpenseSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          error: "Validation failed",
+          issues: result.error.flatten().fieldErrors,
+        },
+        { status: 422 }
+      );
     }
+
+    const { tripId, type, amount, description, liters, date } = result.data;
 
     // Fetch the trip to get vehicleId and verify driver access
     const trip = await prisma.trip.findUnique({
@@ -65,10 +74,10 @@ export async function POST(req: NextRequest) {
         tripId,
         vehicleId: trip.vehicleId,
         type,
-        amount: parseFloat(amount),
+        amount,
         description: description || null,
-        liters: liters ? parseFloat(liters) : 0,
-        cost: parseFloat(amount),
+        liters: liters || 0,
+        cost: amount,
         date: new Date(date),
       },
     });

@@ -1,0 +1,39 @@
+{
+  "Overview": [
+    "FLEET_MANAGER",
+    "DRIVER",
+    "SAFETY_OFFICER",
+    "FINANCIAL_ANALYST"
+  ],
+  "Users & Drivers": [
+    "FLEET_MANAGER"
+  ],
+  "Vehicles": [
+    "FLEET_MANAGER"
+  ],
+  "Trips": [
+    "FLEET_MANAGER",
+    "SAFETY_OFFICER",
+    "DRIVER"
+  ],
+  "Maintenance": [
+    "FLEET_MANAGER",
+    "FINANCIAL_ANALYST"
+  ],
+  "Expenses": [
+    "FLEET_MANAGER",
+    "FINANCIAL_ANALYST"
+  ],
+  "Fuel Logs": [
+    "FLEET_MANAGER",
+    "FINANCIAL_ANALYST"
+  ],
+  "Reports": [
+    "FLEET_MANAGER",
+    "FINANCIAL_ANALYST",
+    "SAFETY_OFFICER"
+  ],
+  "Settings": [
+    "FLEET_MANAGER"
+  ]
+}

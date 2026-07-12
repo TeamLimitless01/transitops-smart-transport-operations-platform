@@ -54,6 +54,8 @@ export async function GET(req: NextRequest) {
   }
 }
 
+import { createTripSchema } from "@/lib/validations/trip";
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
@@ -66,11 +68,18 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { source, destination, cargoWeight, plannedDistance, vehicleId, driverId } = body;
-
-    if (!source || !destination || !cargoWeight || !plannedDistance || !vehicleId || !driverId) {
-      return NextResponse.json({ error: "All fields are required" }, { status: 422 });
+    const result = createTripSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          error: "Validation failed",
+          issues: result.error.flatten().fieldErrors,
+        },
+        { status: 422 }
+      );
     }
+
+    const { source, destination, cargoWeight, plannedDistance, vehicleId, driverId } = result.data;
 
     // Ensure the vehicle & driver are available
     const [vehicle, driver] = await Promise.all([
@@ -97,8 +106,8 @@ export async function POST(req: NextRequest) {
         data: {
           source,
           destination,
-          cargoWeight: parseFloat(cargoWeight),
-          plannedDistance: parseFloat(plannedDistance),
+          cargoWeight,
+          plannedDistance,
           vehicleId,
           driverId,
           status: "DISPATCHED",

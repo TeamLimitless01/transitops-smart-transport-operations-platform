@@ -47,6 +47,7 @@ export default function VehicleTable({ initialVehicles }: VehicleTableProps) {
   const [acquisitionCost, setAcquisitionCost] = useState("");
   const [region, setRegion] = useState("");
 
+  const [formErrors, setFormErrors] = useState<Record<string, string[]>>({});
   const [serverError, setServerError] = useState<string | null>(null);
 
   // Filtered Vehicles
@@ -62,11 +63,13 @@ export default function VehicleTable({ initialVehicles }: VehicleTableProps) {
   const resetForm = () => {
     setRegistrationNumber(""); setName(""); setModel(""); setType("TRUCK");
     setMaxLoadCapacity(""); setOdometer(""); setAcquisitionCost(""); setRegion("");
+    setFormErrors({});
     setServerError(null);
   };
 
   const handleCreateVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormErrors({});
     setServerError(null);
 
     startTransition(async () => {
@@ -83,7 +86,11 @@ export default function VehicleTable({ initialVehicles }: VehicleTableProps) {
 
         const data = await res.json();
         if (!res.ok) {
-          setServerError(data.message || "Failed to create vehicle");
+          if (res.status === 422 && data.issues) {
+            setFormErrors(data.issues);
+          } else {
+            setServerError(data.message || data.error || "Failed to create vehicle");
+          }
           return;
         }
 
@@ -198,33 +205,40 @@ export default function VehicleTable({ initialVehicles }: VehicleTableProps) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Registration Number</label>
-                  <input type="text" required placeholder="e.g. ABC-1234" value={registrationNumber} onChange={(e) => setRegistrationNumber(e.target.value)} className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600" />
+                  <input type="text" placeholder="e.g. ABC-1234" value={registrationNumber} onChange={(e) => setRegistrationNumber(e.target.value)} className={`bg-slate-950 border text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${formErrors.registrationNumber ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-slate-800 focus:border-indigo-500 focus:ring-indigo-500"}`} />
+                  {formErrors.registrationNumber && <p className="text-[10px] text-red-400">{formErrors.registrationNumber[0]}</p>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Vehicle Name</label>
-                  <input type="text" required placeholder="e.g. Truck Alpha" value={name} onChange={(e) => setName(e.target.value)} className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600" />
+                  <input type="text" placeholder="e.g. Truck Alpha" value={name} onChange={(e) => setName(e.target.value)} className={`bg-slate-950 border text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${formErrors.name ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-slate-800 focus:border-indigo-500 focus:ring-indigo-500"}`} />
+                  {formErrors.name && <p className="text-[10px] text-red-400">{formErrors.name[0]}</p>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Model</label>
-                  <input type="text" required placeholder="e.g. Volvo FH16" value={model} onChange={(e) => setModel(e.target.value)} className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600" />
+                  <input type="text" placeholder="e.g. Volvo FH16" value={model} onChange={(e) => setModel(e.target.value)} className={`bg-slate-950 border text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${formErrors.model ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-slate-800 focus:border-indigo-500 focus:ring-indigo-500"}`} />
+                  {formErrors.model && <p className="text-[10px] text-red-400">{formErrors.model[0]}</p>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Type</label>
                   <select value={type} onChange={(e) => setType(e.target.value)} className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
                     {VEHICLE_TYPES.map(t => <option key={t} value={t} className="bg-slate-900">{t}</option>)}
                   </select>
+                  {formErrors.type && <p className="text-[10px] text-red-400">{formErrors.type[0]}</p>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Max Load Capacity (kg)</label>
-                  <input type="number" required min="0" placeholder="e.g. 15000" value={maxLoadCapacity} onChange={(e) => setMaxLoadCapacity(e.target.value)} className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600" />
+                  <input type="number" placeholder="e.g. 15000" value={maxLoadCapacity} onChange={(e) => setMaxLoadCapacity(e.target.value)} className={`bg-slate-950 border text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${formErrors.maxLoadCapacity ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-slate-800 focus:border-indigo-500 focus:ring-indigo-500"}`} />
+                  {formErrors.maxLoadCapacity && <p className="text-[10px] text-red-400">{formErrors.maxLoadCapacity[0]}</p>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Odometer (km)</label>
-                  <input type="number" required min="0" placeholder="e.g. 50000" value={odometer} onChange={(e) => setOdometer(e.target.value)} className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600" />
+                  <input type="number" placeholder="e.g. 50000" value={odometer} onChange={(e) => setOdometer(e.target.value)} className={`bg-slate-950 border text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${formErrors.odometer ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-slate-800 focus:border-indigo-500 focus:ring-indigo-500"}`} />
+                  {formErrors.odometer && <p className="text-[10px] text-red-400">{formErrors.odometer[0]}</p>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Acquisition Cost ($)</label>
-                  <input type="number" required min="0" placeholder="e.g. 120000" value={acquisitionCost} onChange={(e) => setAcquisitionCost(e.target.value)} className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600" />
+                  <input type="number" placeholder="e.g. 120000" value={acquisitionCost} onChange={(e) => setAcquisitionCost(e.target.value)} className={`bg-slate-950 border text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${formErrors.acquisitionCost ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-slate-800 focus:border-indigo-500 focus:ring-indigo-500"}`} />
+                  {formErrors.acquisitionCost && <p className="text-[10px] text-red-400">{formErrors.acquisitionCost[0]}</p>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Region (Optional)</label>
