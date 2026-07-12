@@ -94,7 +94,6 @@ model Vehicle {
 
   trips              Trip[]
   maintenances       Maintenance[]
-  fuelLogs           FuelLog[]
   expenses           Expense[]
 
   createdAt          DateTime       @default(now())
@@ -139,8 +138,11 @@ model Trip {
   driverId          String
   driver            Driver      @relation(fields: [driverId], references: [id])
 
-  fuelLogs          FuelLog[]
   expenses          Expense[]
+
+  startTime         DateTime?
+
+  endTime           DateTime?
 
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
@@ -196,6 +198,10 @@ model Expense {
 
   amount      Float
   description String?
+
+  liters      Float
+  
+  cost        Float
 
   date        DateTime
 
