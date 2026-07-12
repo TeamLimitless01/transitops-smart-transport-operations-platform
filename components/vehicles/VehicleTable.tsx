@@ -46,7 +46,7 @@ export default function VehicleTable({ initialVehicles }: VehicleTableProps) {
   const [odometer, setOdometer] = useState("");
   const [acquisitionCost, setAcquisitionCost] = useState("");
   const [region, setRegion] = useState("");
-  
+
   const [serverError, setServerError] = useState<string | null>(null);
 
   // Filtered Vehicles
@@ -152,9 +152,9 @@ export default function VehicleTable({ initialVehicles }: VehicleTableProps) {
                     <td>
                       <div className="vehicle-details-cell">
                         <div className="vehicle-icon-chip">
-                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <rect x="2" y="7" width="20" height="15" rx="2" ry="2"/>
-                            <polyline points="17 2 12 7 7 2"/>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="2" y="7" width="20" height="15" rx="2" ry="2" />
+                            <polyline points="17 2 12 7 7 2" />
                           </svg>
                         </div>
                         <div className="vehicle-name-model">
