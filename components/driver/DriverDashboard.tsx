@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowRight, Circle, Plus, X, Loader2, Check } from "lucide-react";
 
 interface Expense {
   id: string;
@@ -35,11 +36,11 @@ interface DriverDashboardProps {
   trips: Trip[];
 }
 
-const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
-  DRAFT: { label: "Draft", color: "#64748b", bg: "rgba(100,116,139,0.12)" },
-  DISPATCHED: { label: "On Trip", color: "#3b82f6", bg: "rgba(59,130,246,0.12)" },
-  COMPLETED: { label: "Completed", color: "#10b981", bg: "rgba(16,185,129,0.12)" },
-  CANCELLED: { label: "Cancelled", color: "#ef4444", bg: "rgba(239,68,68,0.12)" },
+const STATUS_META: Record<string, { label: string; text: string; bg: string }> = {
+  DRAFT:      { label: "Draft",      text: "text-slate-400", bg: "bg-slate-500/10" },
+  DISPATCHED: { label: "On Trip",    text: "text-blue-400",  bg: "bg-blue-500/10" },
+  COMPLETED:  { label: "Completed",  text: "text-emerald-400", bg: "bg-emerald-500/10" },
+  CANCELLED:  { label: "Cancelled",  text: "text-red-400",   bg: "bg-red-500/10" },
 };
 
 const EXPENSE_TYPES = ["FUEL", "MAINTENANCE", "TOLL", "PARKING", "OTHER"];
@@ -139,94 +140,104 @@ export default function DriverDashboard({ driverName, trips }: DriverDashboardPr
   const totalExpenses = (expenses: Expense[]) => expenses.reduce((s, e) => s + e.cost, 0);
 
   return (
-    <div className="dd-root">
+    <div className="flex flex-col gap-8 w-full max-w-6xl mx-auto">
       {/* Greeting */}
-      <div className="dd-greeting">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8">
         <div>
-          <h1 className="dd-title">Welcome back, {driverName} 👋</h1>
-          <p className="dd-subtitle">Here's your trip overview for today</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-100 tracking-tight">Welcome back, {driverName} 👋</h1>
+          <p className="text-slate-400 mt-1">Here's your trip overview for today</p>
         </div>
-        <div className="dd-stats">
-          <div className="dd-stat">
-            <span className="dd-stat-val">{allTrips.length}</span>
-            <span className="dd-stat-label">Total Trips</span>
+        <div className="flex gap-8 md:gap-12">
+          <div className="flex flex-col">
+            <span className="text-3xl font-bold text-indigo-400">{allTrips.length}</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-1">Total Trips</span>
           </div>
-          <div className="dd-stat">
-            <span className="dd-stat-val">{pastTrips.filter(t => t.status === "COMPLETED").length}</span>
-            <span className="dd-stat-label">Completed</span>
+          <div className="flex flex-col">
+            <span className="text-3xl font-bold text-emerald-400">{pastTrips.filter(t => t.status === "COMPLETED").length}</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-1">Completed</span>
           </div>
         </div>
       </div>
 
-      <div className="dd-layout">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left column: Active + History */}
-        <div className="dd-left">
+        <div className="lg:col-span-7 flex flex-col gap-6">
           {/* Active Trip */}
-          {activeTrip ? (
-            <div className="section-block">
-              <h2 className="section-title">
-                <span className="live-dot" /> Current Trip
-              </h2>
-              <div className="active-trip-card" onClick={() => openTripDetail(activeTrip)}>
-                <div className="atp-header">
-                  <div className="atp-route">
-                    <span className="atp-city">{activeTrip.source}</span>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
-                    <span className="atp-city">{activeTrip.destination}</span>
+          <div className="flex flex-col gap-3">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Current Trip
+            </h2>
+            
+            {activeTrip ? (
+              <div 
+                onClick={() => openTripDetail(activeTrip)}
+                className="bg-blue-950/20 border border-blue-900/40 rounded-2xl p-5 md:p-6 cursor-pointer hover:bg-blue-950/30 hover:border-blue-800/50 transition-all group relative overflow-hidden"
+              >
+                <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl md:text-2xl font-bold text-slate-100">{activeTrip.source}</span>
+                    <ArrowRight className="text-slate-500" />
+                    <span className="text-xl md:text-2xl font-bold text-slate-100">{activeTrip.destination}</span>
                   </div>
-                  <span className="atp-status-pill">LIVE</span>
+                  <span className="text-[10px] font-bold tracking-widest bg-blue-500 text-white px-2.5 py-1 rounded-full shadow-[0_0_12px_rgba(59,130,246,0.4)]">
+                    LIVE
+                  </span>
                 </div>
-                <div className="atp-meta">
-                  <div className="atp-meta-item">
-                    <span className="atp-meta-label">Vehicle</span>
-                    <span className="atp-meta-val">{activeTrip.vehicle.name} · {activeTrip.vehicle.registrationNumber}</span>
+                
+                <div className="grid grid-cols-2 gap-y-4 gap-x-6">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Vehicle</span>
+                    <span className="text-sm font-medium text-slate-300">{activeTrip.vehicle.name} &bull; {activeTrip.vehicle.registrationNumber}</span>
                   </div>
-                  <div className="atp-meta-item">
-                    <span className="atp-meta-label">Cargo</span>
-                    <span className="atp-meta-val">{activeTrip.cargoWeight} kg</span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Cargo</span>
+                    <span className="text-sm font-medium text-slate-300">{activeTrip.cargoWeight} kg</span>
                   </div>
-                  <div className="atp-meta-item">
-                    <span className="atp-meta-label">Distance</span>
-                    <span className="atp-meta-val">{activeTrip.plannedDistance} km</span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Distance</span>
+                    <span className="text-sm font-medium text-slate-300">{activeTrip.plannedDistance} km</span>
                   </div>
-                  <div className="atp-meta-item">
-                    <span className="atp-meta-label">Expenses</span>
-                    <span className="atp-meta-val">{activeTrip.expenses.length} · ${totalExpenses(activeTrip.expenses).toFixed(2)}</span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Expenses</span>
+                    <span className="text-sm font-medium text-slate-300">{activeTrip.expenses.length} &bull; ${totalExpenses(activeTrip.expenses).toFixed(2)}</span>
                   </div>
                 </div>
-                <p className="atp-click-hint">Click to log expenses or complete trip →</p>
+                
+                <p className="text-xs font-medium text-blue-400 mt-5 group-hover:text-blue-300 transition-colors">
+                  Click to log expenses or complete trip &rarr;
+                </p>
               </div>
-            </div>
-          ) : (
-            <div className="no-active-trip">
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3">
-                <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-              </svg>
-              <p>No active trip. You're currently off duty.</p>
-            </div>
-          )}
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-3 py-12 px-6 bg-slate-900/50 border border-dashed border-slate-800 rounded-2xl text-slate-500">
+                <Circle className="h-10 w-10 opacity-20" />
+                <p className="text-sm font-medium">No active trip. You're currently off duty.</p>
+              </div>
+            )}
+          </div>
 
           {/* Trip History */}
           {pastTrips.length > 0 && (
-            <div className="section-block">
-              <h2 className="section-title">Trip History</h2>
-              <div className="history-list">
+            <div className="flex flex-col gap-3">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">Trip History</h2>
+              <div className="flex flex-col gap-2">
                 {pastTrips.map((trip) => (
-                  <div key={trip.id} className="history-item" onClick={() => openTripDetail(trip)}>
-                    <div className="hi-route">
-                      <span className="hi-city">{trip.source}</span>
-                      <span className="hi-sep">→</span>
-                      <span className="hi-city">{trip.destination}</span>
+                  <div 
+                    key={trip.id} 
+                    onClick={() => openTripDetail(trip)}
+                    className="flex items-center justify-between p-4 bg-slate-900 border border-slate-800 rounded-xl cursor-pointer hover:bg-slate-800/80 hover:border-slate-700 transition-all"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-slate-200">{trip.source}</span>
+                      <span className="text-slate-600 text-xs">&rarr;</span>
+                      <span className="text-sm font-bold text-slate-200">{trip.destination}</span>
                     </div>
-                    <div className="hi-meta">
-                      <span>{new Date(trip.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-                      <span>{trip.expenses.length} expenses</span>
-                      <span
-                        className="hi-status"
-                        style={{ color: STATUS_META[trip.status]?.color }}
-                      >
+                    <div className="flex items-center gap-4 text-xs">
+                      <span className="text-slate-500 hidden sm:block">
+                        {new Date(trip.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      </span>
+                      <span className={`font-bold px-2.5 py-1 rounded-md ${STATUS_META[trip.status]?.bg} ${STATUS_META[trip.status]?.text}`}>
                         {STATUS_META[trip.status]?.label}
                       </span>
                     </div>
@@ -238,350 +249,180 @@ export default function DriverDashboard({ driverName, trips }: DriverDashboardPr
         </div>
 
         {/* Right column: Trip Detail Panel */}
-        <div className="dd-right">
-          {selectedTrip ? (
-            <div className="detail-panel">
-              <div className="dp-header">
-                <div>
-                  <h3 className="dp-route">{selectedTrip.source} → {selectedTrip.destination}</h3>
-                  <span
-                    className="dp-status-pill"
-                    style={{
-                      color: STATUS_META[selectedTrip.status]?.color,
-                      background: STATUS_META[selectedTrip.status]?.bg,
-                    }}
-                  >
+        <div className="lg:col-span-5">
+          <div className="sticky top-6">
+            {selectedTrip ? (
+              <div className="flex flex-col gap-6 bg-slate-900 border border-slate-800 rounded-2xl p-5 md:p-6 shadow-xl">
+                <div className="flex flex-col gap-2 border-b border-slate-800 pb-5">
+                  <div className="flex items-start justify-between">
+                    <h3 className="text-lg font-bold text-slate-100 leading-tight">
+                      {selectedTrip.source} &rarr; {selectedTrip.destination}
+                    </h3>
+                  </div>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full w-fit ${STATUS_META[selectedTrip.status]?.bg} ${STATUS_META[selectedTrip.status]?.text}`}>
                     {STATUS_META[selectedTrip.status]?.label}
                   </span>
                 </div>
-              </div>
 
-              <div className="dp-info-grid">
-                <div className="dp-info-item"><span className="dp-info-label">Vehicle</span><span className="dp-info-val">{selectedTrip.vehicle.name}</span></div>
-                <div className="dp-info-item"><span className="dp-info-label">Reg #</span><span className="dp-info-val">{selectedTrip.vehicle.registrationNumber}</span></div>
-                <div className="dp-info-item"><span className="dp-info-label">Cargo Weight</span><span className="dp-info-val">{selectedTrip.cargoWeight} kg</span></div>
-                <div className="dp-info-item"><span className="dp-info-label">Planned Dist.</span><span className="dp-info-val">{selectedTrip.plannedDistance} km</span></div>
-                <div className="dp-info-item"><span className="dp-info-label">Actual Dist.</span><span className="dp-info-val">{selectedTrip.actualDistance ?? "—"} km</span></div>
-                <div className="dp-info-item"><span className="dp-info-label">Fuel Used</span><span className="dp-info-val">{selectedTrip.fuelConsumed ?? "—"} L</span></div>
-              </div>
+                <div className="grid grid-cols-2 gap-y-4 gap-x-2">
+                  <div className="flex flex-col gap-1"><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Vehicle</span><span className="text-sm font-medium text-slate-300">{selectedTrip.vehicle.name}</span></div>
+                  <div className="flex flex-col gap-1"><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Reg #</span><span className="text-sm font-medium text-slate-300">{selectedTrip.vehicle.registrationNumber}</span></div>
+                  <div className="flex flex-col gap-1"><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Cargo</span><span className="text-sm font-medium text-slate-300">{selectedTrip.cargoWeight} kg</span></div>
+                  <div className="flex flex-col gap-1"><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Planned Dist.</span><span className="text-sm font-medium text-slate-300">{selectedTrip.plannedDistance} km</span></div>
+                </div>
 
-              {/* Expenses */}
-              <div className="dp-expenses-header">
-                <span className="dp-section-title">Expenses</span>
+                {/* Expenses */}
+                <div className="flex flex-col gap-4 mt-2">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Expenses</span>
+                    {selectedTrip.status === "DISPATCHED" && (
+                      <button 
+                        onClick={() => setExpenseModalOpen(true)}
+                        className="text-xs font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                      >
+                        <Plus size={14} /> Add
+                      </button>
+                    )}
+                  </div>
+
+                  {selectedTrip.expenses.length === 0 ? (
+                    <p className="text-xs text-slate-500 text-center py-4">No expenses logged yet.</p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {selectedTrip.expenses.map((exp) => (
+                         <div key={exp.id} className="flex items-center justify-between bg-slate-950/50 border border-slate-800/60 rounded-xl p-3">
+                           <div className="flex flex-col gap-0.5">
+                             <span className="text-[10px] font-bold uppercase text-slate-400">{exp.type}</span>
+                             {exp.description && <span className="text-xs text-slate-500">{exp.description}</span>}
+                           </div>
+                           <div className="flex flex-col items-end gap-0.5">
+                             <span className="text-sm font-bold text-emerald-400">${exp.cost.toFixed(2)}</span>
+                             {exp.type === "FUEL" && exp.liters > 0 && (
+                               <span className="text-[10px] font-semibold text-slate-500">{exp.liters}L</span>
+                             )}
+                           </div>
+                         </div>
+                      ))}
+                      <div className="flex justify-between items-center pt-3 mt-1 border-t border-slate-800">
+                        <span className="text-sm font-bold text-slate-300">Total</span>
+                        <span className="text-lg font-bold text-slate-100">${totalExpenses(selectedTrip.expenses).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {selectedTrip.status === "DISPATCHED" && (
-                  <button className="add-expense-btn" onClick={() => setExpenseModalOpen(true)}>
-                    + Add Expense
+                  <button
+                    onClick={() => handleCompleteTrip(selectedTrip.id)}
+                    className="w-full mt-4 flex items-center justify-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 py-3 rounded-xl font-bold transition-colors"
+                  >
+                    <Check size={18} /> Mark as Completed
                   </button>
                 )}
               </div>
-
-              {selectedTrip.expenses.length === 0 ? (
-                <p className="dp-empty">No expenses logged yet.</p>
-              ) : (
-                <div className="dp-expense-list">
-                  {selectedTrip.expenses.map((exp) => (
-                    <div key={exp.id} className="dp-expense-item">
-                      <div className="dpe-left">
-                        <span className="dpe-type">{exp.type}</span>
-                        {exp.description && <span className="dpe-desc">{exp.description}</span>}
-                        <span className="dpe-date">{new Date(exp.date).toLocaleDateString()}</span>
-                      </div>
-                      <div className="dpe-right">
-                        {exp.type === "FUEL" && exp.liters > 0 && (
-                          <span className="dpe-liters">{exp.liters}L</span>
-                        )}
-                        <span className="dpe-cost">${exp.cost.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="dp-expense-total">
-                    <span>Total</span>
-                    <span>${totalExpenses(selectedTrip.expenses).toFixed(2)}</span>
-                  </div>
-                </div>
-              )}
-
-              {selectedTrip.status === "DISPATCHED" && (
-                <button
-                  className="complete-trip-btn"
-                  onClick={() => handleCompleteTrip(selectedTrip.id)}
-                >
-                  ✓ Mark as Completed
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="detail-placeholder">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.25">
-                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
-                <rect x="9" y="3" width="6" height="4" rx="2" />
-              </svg>
-              <p>Select a trip to view details</p>
-            </div>
-          )}
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-3 h-[400px] bg-slate-900/50 border border-dashed border-slate-800 rounded-2xl text-slate-500">
+                <Circle className="h-10 w-10 opacity-20" />
+                <p className="text-sm font-medium">Select a trip to view details</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Expense Modal */}
       {expenseModalOpen && selectedTrip && (
-        <div className="modal-backdrop">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3 className="modal-title">Log Expense</h3>
-              <button className="close-btn" onClick={() => { setExpenseModalOpen(false); resetExpForm(); }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+              <h3 className="text-lg font-bold text-slate-100">Log Expense</h3>
+              <button 
+                onClick={() => { setExpenseModalOpen(false); resetExpForm(); }}
+                className="text-slate-500 hover:text-slate-300 transition-colors p-1"
+              >
+                <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleAddExpense} className="modal-form">
-              {serverError && <div className="error-banner">{serverError}</div>}
+            
+            <form onSubmit={handleAddExpense} className="p-6 flex flex-col gap-4">
+              {serverError && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-xl">
+                  {serverError}
+                </div>
+              )}
 
-              <div className="form-group">
-                <label className="form-label">Expense Type</label>
-                <select value={expType} onChange={(e) => setExpType(e.target.value)} className="form-select">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Expense Type</label>
+                <select 
+                  value={expType} 
+                  onChange={(e) => setExpType(e.target.value)} 
+                  className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                >
                   {EXPENSE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
 
               {expType === "FUEL" && (
-                <div className="form-group">
-                  <label className="form-label">Liters</label>
-                  <input type="number" min="0" step="0.01" placeholder="e.g. 45.5" value={expLiters} onChange={(e) => setExpLiters(e.target.value)} className="form-input" />
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Liters</label>
+                  <input 
+                    type="number" min="0" step="0.01" placeholder="e.g. 45.5" 
+                    value={expLiters} onChange={(e) => setExpLiters(e.target.value)} 
+                    className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" 
+                  />
                 </div>
               )}
 
-              <div className="form-group">
-                <label className="form-label">Amount ($)</label>
-                <input type="number" min="0" step="0.01" placeholder="e.g. 78.50" value={expAmount} onChange={(e) => setExpAmount(e.target.value)} className="form-input" required />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Amount ($)</label>
+                <input 
+                  type="number" min="0" step="0.01" placeholder="e.g. 78.50" 
+                  value={expAmount} onChange={(e) => setExpAmount(e.target.value)} 
+                  className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" 
+                  required 
+                />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Date</label>
-                <input type="date" value={expDate} onChange={(e) => setExpDate(e.target.value)} className="form-input" required />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Date</label>
+                <input 
+                  type="date" 
+                  value={expDate} onChange={(e) => setExpDate(e.target.value)} 
+                  className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" 
+                  required 
+                />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Description (optional)</label>
-                <input type="text" placeholder="e.g. Fuel at Shell station" value={expDescription} onChange={(e) => setExpDescription(e.target.value)} className="form-input" />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Description (optional)</label>
+                <input 
+                  type="text" placeholder="e.g. Fuel at Shell station" 
+                  value={expDescription} onChange={(e) => setExpDescription(e.target.value)} 
+                  className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" 
+                />
               </div>
 
-              <div className="modal-actions">
-                <button type="button" className="cancel-btn" onClick={() => { setExpenseModalOpen(false); resetExpForm(); }} disabled={isPending}>Cancel</button>
-                <button type="submit" className="save-btn" disabled={isPending}>
-                  {isPending ? <span className="spinner" /> : "Save Expense"}
+              <div className="flex justify-end gap-3 mt-4">
+                <button 
+                  type="button" 
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
+                  onClick={() => { setExpenseModalOpen(false); resetExpForm(); }} 
+                  disabled={isPending}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-bold transition-colors flex items-center justify-center min-w-[120px] disabled:opacity-70"
+                  disabled={isPending}
+                >
+                  {isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : "Save Expense"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
-      <style>{`
-        .dd-root { display: flex; flex-direction: column; gap: 28px; padding: 32px; max-width: 1400px; margin: 0 auto; }
-
-        .dd-greeting {
-          display: flex; align-items: center; justify-content: space-between;
-          background: rgba(15,15,25,0.7); border: 1px solid rgba(255,255,255,0.06);
-          border-radius: 16px; padding: 24px 28px;
-        }
-        .dd-title { font-size: 22px; font-weight: 800; color: #f1f5f9; margin: 0; }
-        .dd-subtitle { font-size: 13px; color: #475569; margin: 6px 0 0; }
-        .dd-stats { display: flex; gap: 32px; }
-        .dd-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-        .dd-stat-val { font-size: 28px; font-weight: 800; color: #6366f1; }
-        .dd-stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: #475569; letter-spacing: 0.4px; }
-
-        .dd-layout { display: grid; grid-template-columns: 1fr 380px; gap: 20px; }
-        .dd-left { display: flex; flex-direction: column; gap: 20px; }
-        .dd-right { position: sticky; top: 24px; height: fit-content; }
-
-        .section-block { display: flex; flex-direction: column; gap: 12px; }
-        .section-title {
-          font-size: 13px; font-weight: 700; text-transform: uppercase;
-          letter-spacing: 0.5px; color: #475569;
-          display: flex; align-items: center; gap: 8px;
-        }
-        .live-dot {
-          width: 8px; height: 8px; border-radius: 50%; background: #10b981;
-          box-shadow: 0 0 0 3px rgba(16,185,129,0.2);
-          animation: pulse 2s ease-in-out infinite;
-        }
-        @keyframes pulse { 0%,100% { box-shadow: 0 0 0 3px rgba(16,185,129,0.2); } 50% { box-shadow: 0 0 0 6px rgba(16,185,129,0.05); } }
-
-        .active-trip-card {
-          background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.2);
-          border-radius: 16px; padding: 20px 24px; cursor: pointer;
-          transition: background 0.2s, border-color 0.2s;
-          display: flex; flex-direction: column; gap: 14px;
-        }
-        .active-trip-card:hover { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.35); }
-
-        .atp-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-        .atp-route { display: flex; align-items: center; gap: 10px; }
-        .atp-city { font-size: 18px; font-weight: 800; color: #f1f5f9; }
-        .atp-status-pill {
-          font-size: 10px; font-weight: 800; letter-spacing: 1px;
-          background: #3b82f6; color: #fff; padding: 3px 10px; border-radius: 20px;
-          animation: pulse-blue 2s ease-in-out infinite;
-        }
-        @keyframes pulse-blue { 0%,100% { box-shadow: 0 0 0 3px rgba(59,130,246,0.2); } 50% { box-shadow: 0 0 0 6px rgba(59,130,246,0.05); } }
-
-        .atp-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; }
-        .atp-meta-item { display: flex; flex-direction: column; gap: 2px; }
-        .atp-meta-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: #64748b; }
-        .atp-meta-val { font-size: 13px; color: #94a3b8; }
-        .atp-click-hint { font-size: 11px; color: #3b82f6; margin: 0; }
-
-        .no-active-trip {
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          gap: 10px; padding: 36px; color: #475569;
-          background: rgba(15,15,25,0.4); border: 1px dashed rgba(255,255,255,0.06);
-          border-radius: 16px; text-align: center;
-        }
-        .no-active-trip p { font-size: 13px; margin: 0; }
-
-        .history-list { display: flex; flex-direction: column; gap: 8px; }
-        .history-item {
-          background: rgba(15,15,25,0.6); border: 1px solid rgba(255,255,255,0.05);
-          border-radius: 10px; padding: 12px 16px;
-          display: flex; align-items: center; justify-content: space-between; gap: 16px;
-          cursor: pointer; transition: background 0.15s, border-color 0.15s;
-        }
-        .history-item:hover { background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.1); }
-        .hi-route { display: flex; align-items: center; gap: 6px; }
-        .hi-city { font-size: 13px; font-weight: 600; color: #cbd5e1; }
-        .hi-sep { color: #475569; font-size: 11px; }
-        .hi-meta { display: flex; gap: 12px; align-items: center; font-size: 11px; color: #64748b; }
-        .hi-status { font-weight: 700; }
-
-        /* Detail panel */
-        .detail-panel {
-          background: rgba(15,15,25,0.8); border: 1px solid rgba(255,255,255,0.07);
-          border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 16px;
-        }
-        .dp-header { display: flex; flex-direction: column; gap: 8px; }
-        .dp-route { font-size: 16px; font-weight: 800; color: #f1f5f9; margin: 0; }
-        .dp-status-pill {
-          font-size: 11px; font-weight: 700; padding: 3px 10px;
-          border-radius: 20px; width: fit-content;
-        }
-
-        .dp-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; }
-        .dp-info-item { display: flex; flex-direction: column; gap: 2px; }
-        .dp-info-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: #475569; }
-        .dp-info-val { font-size: 13px; color: #94a3b8; }
-
-        .dp-expenses-header {
-          display: flex; align-items: center; justify-content: space-between;
-          border-top: 1px solid rgba(255,255,255,0.05); padding-top: 14px;
-        }
-        .dp-section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; }
-        .add-expense-btn {
-          height: 30px; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3);
-          border-radius: 8px; color: #818cf8; font-size: 12px; font-weight: 600;
-          padding: 0 12px; cursor: pointer; transition: background 0.2s;
-        }
-        .add-expense-btn:hover { background: rgba(99,102,241,0.25); }
-
-        .dp-empty { font-size: 12px; color: #475569; text-align: center; padding: 20px 0; margin: 0; }
-        .dp-expense-list { display: flex; flex-direction: column; gap: 6px; }
-        .dp-expense-item {
-          display: flex; align-items: center; justify-content: space-between;
-          background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04);
-          border-radius: 8px; padding: 9px 12px; gap: 12px;
-        }
-        .dpe-left { display: flex; flex-direction: column; gap: 2px; }
-        .dpe-type { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #94a3b8; }
-        .dpe-desc { font-size: 11px; color: #64748b; }
-        .dpe-date { font-size: 10px; color: #475569; }
-        .dpe-right { display: flex; align-items: center; gap: 10px; }
-        .dpe-liters { font-size: 11px; color: #64748b; }
-        .dpe-cost { font-size: 14px; font-weight: 700; color: #10b981; }
-        .dp-expense-total {
-          display: flex; justify-content: space-between;
-          border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;
-          font-size: 13px; font-weight: 700; color: #f1f5f9;
-        }
-
-        .complete-trip-btn {
-          width: 100%; height: 40px; background: rgba(16,185,129,0.12);
-          border: 1px solid rgba(16,185,129,0.3); border-radius: 10px;
-          color: #10b981; font-size: 13px; font-weight: 700;
-          cursor: pointer; transition: background 0.2s;
-        }
-        .complete-trip-btn:hover { background: rgba(16,185,129,0.2); }
-
-        .detail-placeholder {
-          height: 300px; display: flex; flex-direction: column; align-items: center;
-          justify-content: center; gap: 12px; color: #475569;
-          background: rgba(15,15,25,0.5); border: 1px dashed rgba(255,255,255,0.06);
-          border-radius: 16px; text-align: center;
-        }
-        .detail-placeholder p { font-size: 13px; margin: 0; }
-
-        /* Modal */
-        .modal-backdrop {
-          position: fixed; inset: 0; background: rgba(0,0,0,0.65);
-          backdrop-filter: blur(4px); display: flex; align-items: center;
-          justify-content: center; z-index: 100;
-        }
-        .modal-content {
-          width: 100%; max-width: 440px; background: #0d0d1a;
-          border: 1px solid rgba(255,255,255,0.08); border-radius: 18px;
-          box-shadow: 0 24px 60px rgba(0,0,0,0.7); animation: scaleUp 0.2s ease;
-        }
-        @keyframes scaleUp { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
-        .modal-header {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-        .modal-title { font-size: 16px; font-weight: 700; color: #f1f5f9; margin: 0; }
-        .close-btn {
-          background: none; border: none; color: #475569; cursor: pointer;
-          padding: 4px; border-radius: 6px; display: flex; transition: color 0.2s;
-        }
-        .close-btn:hover { color: #94a3b8; }
-
-        .modal-form { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
-        .form-group { display: flex; flex-direction: column; gap: 6px; }
-        .form-label { font-size: 12px; font-weight: 600; color: #64748b; }
-        .form-input, .form-select {
-          height: 40px; background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
-          padding: 0 12px; color: #f1f5f9; font-family: inherit; font-size: 14px;
-          transition: border-color 0.2s;
-        }
-        .form-select option { background: #0d0d1a; color: #cbd5e1; }
-        .form-input:focus, .form-select:focus {
-          outline: none; border-color: rgba(99,102,241,0.5);
-        }
-        .error-banner {
-          background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25);
-          border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #f87171;
-        }
-        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
-        .cancel-btn {
-          height: 38px; background: transparent;
-          border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
-          color: #cbd5e1; font-size: 13px; font-weight: 600; padding: 0 14px; cursor: pointer;
-        }
-        .cancel-btn:hover { background: rgba(255,255,255,0.02); }
-        .save-btn {
-          height: 38px; background: #6366f1; border: none; border-radius: 8px;
-          color: #fff; font-size: 13px; font-weight: 600; padding: 0 16px;
-          display: flex; align-items: center; justify-content: center;
-          cursor: pointer; transition: opacity 0.2s;
-        }
-        .save-btn:hover { opacity: 0.9; }
-        .save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .spinner {
-          width: 16px; height: 16px;
-          border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
-          border-radius: 50%; animation: spin 0.7s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
 }

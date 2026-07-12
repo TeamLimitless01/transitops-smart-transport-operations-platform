@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import DriverDashboard from "@/components/driver/DriverDashboard";
+import { ArrowRight, Users, Truck, UserCircle, Map, ChevronRight } from "lucide-react";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -27,7 +28,7 @@ export default async function DashboardPage() {
 
     if (!driver) {
       return (
-        <div style={{ padding: 40, color: "#ef4444" }}>
+        <div className="p-10 text-red-400 bg-red-950/20 border border-red-900/50 rounded-xl">
           No driver profile found for your account. Please contact your Fleet Manager.
         </div>
       );
@@ -63,181 +64,116 @@ export default async function DashboardPage() {
       title: "Registered Users",
       value: userCount,
       desc: "Administrators & staff",
-      color: "#6366f1",
-      icon: "👥",
+      color: "text-indigo-400",
+      bg: "bg-indigo-500/10",
+      border: "border-indigo-500/30",
+      icon: Users,
       link: "/dashboard/users",
     },
     {
       title: "Fleet Vehicles",
       value: vehicleCount,
       desc: "Trucks, vans & other fleet units",
-      color: "#10b981",
-      icon: "🚛",
+      color: "text-emerald-400",
+      bg: "bg-emerald-500/10",
+      border: "border-emerald-500/30",
+      icon: Truck,
       link: "/vehicles",
     },
     {
       title: "Active Drivers",
       value: driverCount,
       desc: "Qualified personnel",
-      color: "#f59e0b",
-      icon: "🧑‍✈️",
+      color: "text-amber-400",
+      bg: "bg-amber-500/10",
+      border: "border-amber-500/30",
+      icon: UserCircle,
       link: "/dashboard/users",
     },
     {
       title: "Trips Dispatched",
       value: tripCount,
       desc: "Active and completed trips",
-      color: "#3b82f6",
-      icon: "🛣️",
+      color: "text-blue-400",
+      bg: "bg-blue-500/10",
+      border: "border-blue-500/30",
+      icon: Map,
       link: "/trips",
     },
   ];
 
   return (
-    <div className="overview-root">
-      <div className="overview-header">
-        <h2 className="overview-title">Operations Overview</h2>
-        <p className="overview-subtitle">Real-time status of your transport platform assets</p>
+    <div className="flex flex-col gap-8 w-full">
+      <div className="mb-2">
+        <h2 className="text-2xl font-bold text-slate-100 tracking-tight mb-1.5">Operations Overview</h2>
+        <p className="text-sm text-slate-400">Real-time status of your transport platform assets</p>
       </div>
 
       {/* Stats Grid */}
-      <div className="stats-grid">
-        {stats.map((stat) => (
-          <div key={stat.title} className="stat-card" style={{ "--accent-color": stat.color } as React.CSSProperties}>
-            <div className="stat-card-header">
-              <div className="stat-icon">{stat.icon}</div>
-              <span className="stat-value">{stat.value}</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div key={stat.title} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col gap-4 relative overflow-hidden group hover:border-slate-700 transition-colors">
+              {/* Top Accent Bar */}
+              <div className={`absolute top-0 left-0 right-0 h-1 ${stat.bg}`} />
+              
+              <div className="flex items-center justify-between">
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${stat.bg} ${stat.color}`}>
+                  <Icon size={22} />
+                </div>
+                <span className="text-3xl font-bold text-slate-100 tracking-tight">{stat.value}</span>
+              </div>
+              
+              <div className="flex flex-col gap-1 mt-2">
+                <h3 className="text-sm font-semibold text-slate-200">{stat.title}</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">{stat.desc}</p>
+              </div>
+              
+              <Link href={stat.link} className={`mt-2 text-sm font-medium ${stat.color} inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity w-fit`}>
+                Manage <ArrowRight size={14} />
+              </Link>
             </div>
-            <div className="stat-card-body">
-              <h3 className="stat-card-title">{stat.title}</h3>
-              <p className="stat-card-desc">{stat.desc}</p>
-            </div>
-            <Link href={stat.link} className="stat-card-action">
-              Manage
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </Link>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Active Trips */}
       {activeTrips.length > 0 && (
-        <div className="active-trips-section">
-          <div className="section-header">
-            <h3 className="section-title">
-              <span className="live-dot" />
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col gap-5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
               Live Dispatches
             </h3>
-            <Link href="/trips" className="view-all-link">View all trips →</Link>
+            <Link href="/trips" className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">
+              View all trips &rarr;
+            </Link>
           </div>
-          <div className="active-trips-list">
+          
+          <div className="flex flex-col gap-2.5">
             {activeTrips.map((trip) => (
-              <div key={trip.id} className="active-trip-row">
-                <div className="atr-route">
-                  <span className="atr-source">{trip.source}</span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="atr-arrow">
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                  <span className="atr-dest">{trip.destination}</span>
+              <div key={trip.id} className="flex items-center justify-between gap-4 bg-slate-950/50 border border-slate-800/60 rounded-xl p-4 hover:border-slate-700 transition-colors">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-bold text-slate-200">{trip.source}</span>
+                  <ArrowRight size={14} className="text-slate-500" />
+                  <span className="text-sm font-bold text-slate-200">{trip.destination}</span>
                 </div>
-                <div className="atr-details">
+                
+                <div className="flex gap-2 text-xs text-slate-400 flex-1 px-4 hidden sm:flex">
                   <span>{trip.driver.name}</span>
-                  <span className="atr-sep">·</span>
+                  <span className="text-slate-700">&bull;</span>
                   <span>{trip.vehicle.name} ({trip.vehicle.registrationNumber})</span>
                 </div>
-                <span className="atr-live-badge">LIVE</span>
+                
+                <span className="text-[10px] font-bold tracking-widest bg-blue-500 text-white px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.3)]">
+                  LIVE
+                </span>
               </div>
             ))}
           </div>
         </div>
       )}
-
-      <style>{`
-        .overview-root {
-          display: flex;
-          flex-direction: column;
-          gap: 28px;
-          padding: 32px;
-          max-width: 1400px;
-          margin: 0 auto;
-        }
-
-        .overview-header { margin-bottom: 4px; }
-        .overview-title { font-size: 24px; font-weight: 700; color: #f1f5f9; letter-spacing: -0.5px; margin-bottom: 6px; }
-        .overview-subtitle { font-size: 14.5px; color: #64748b; margin: 0; }
-
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
-
-        .stat-card {
-          background: rgba(15,15,25,0.8); border: 1px solid rgba(255,255,255,0.05);
-          border-radius: 16px; padding: 24px;
-          display: flex; flex-direction: column; gap: 16px;
-          position: relative; overflow: hidden;
-          transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
-        }
-        .stat-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 12px 30px -10px rgba(0,0,0,0.5);
-          border-color: color-mix(in srgb, var(--accent-color) 35%, transparent);
-        }
-        .stat-card::before {
-          content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-          background: var(--accent-color); opacity: 0.8;
-        }
-
-        .stat-card-header { display: flex; align-items: center; justify-content: space-between; }
-        .stat-icon { font-size: 22px; width: 44px; height: 44px; background: rgba(255,255,255,0.03); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
-        .stat-value { font-size: 32px; font-weight: 800; color: #f1f5f9; letter-spacing: -1px; }
-        .stat-card-body { display: flex; flex-direction: column; gap: 4px; }
-        .stat-card-title { font-size: 15px; font-weight: 600; color: #e2e8f0; margin: 0; }
-        .stat-card-desc { font-size: 13px; color: #64748b; line-height: 1.4; margin: 0; }
-        .stat-card-action {
-          margin-top: 8px; font-size: 13px; font-weight: 600; color: #818cf8;
-          text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
-          width: fit-content; transition: opacity 0.2s;
-        }
-        .stat-card-action:hover { opacity: 0.8; }
-
-        /* Live dispatches */
-        .active-trips-section {
-          background: rgba(15,15,25,0.7); border: 1px solid rgba(255,255,255,0.05);
-          border-radius: 16px; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px;
-        }
-        .section-header { display: flex; align-items: center; justify-content: space-between; }
-        .section-title {
-          font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
-          color: #475569; display: flex; align-items: center; gap: 8px; margin: 0;
-        }
-        .live-dot {
-          width: 8px; height: 8px; border-radius: 50%; background: #10b981;
-          box-shadow: 0 0 0 3px rgba(16,185,129,0.2);
-          animation: pulse 2s ease-in-out infinite;
-        }
-        @keyframes pulse {
-          0%,100% { box-shadow: 0 0 0 3px rgba(16,185,129,0.2); }
-          50% { box-shadow: 0 0 0 6px rgba(16,185,129,0.05); }
-        }
-        .view-all-link { font-size: 12px; color: #6366f1; text-decoration: none; font-weight: 600; }
-        .view-all-link:hover { opacity: 0.8; }
-
-        .active-trips-list { display: flex; flex-direction: column; gap: 8px; }
-        .active-trip-row {
-          display: flex; align-items: center; justify-content: space-between; gap: 16px;
-          background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04);
-          border-radius: 10px; padding: 12px 16px;
-        }
-        .atr-route { display: flex; align-items: center; gap: 8px; }
-        .atr-source, .atr-dest { font-size: 14px; font-weight: 700; color: #e2e8f0; }
-        .atr-arrow { color: #475569; }
-        .atr-details { display: flex; gap: 6px; font-size: 12px; color: #64748b; flex: 1; }
-        .atr-sep { color: #334155; }
-        .atr-live-badge {
-          font-size: 9px; font-weight: 800; letter-spacing: 1px;
-          background: #3b82f6; color: #fff; padding: 2px 8px; border-radius: 20px;
-        }
-      `}</style>
     </div>
   );
 }
