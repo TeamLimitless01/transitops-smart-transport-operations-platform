@@ -18,7 +18,7 @@ export default async function DashboardLayout({
         <Navbar user={session?.user} />
 
         <main className="flex-1 overflow-auto bg-slate-950 p-6 md:p-8">
-          <div className="mx-auto max-w-7xl">
+          <div className="mx-auto max-w-7xl animate-fade-in">
             {children}
           </div>
         </main>

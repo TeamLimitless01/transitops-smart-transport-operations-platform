@@ -1,65 +1,53 @@
-import Link from "next/link";
-import { headers } from "next/headers";
-import {
-  LayoutDashboard,
-  Truck,
-  Users,
-  Map,
-  Wrench,
-  Wallet,
-  BarChart3,
-  Droplets,
-  Settings as SettingsIcon,
-  LogOut,
-} from "lucide-react";
 import { auth, signOut } from "@/auth";
 import { getPermissions } from "@/lib/permissions";
+import SidebarLinks from "./SidebarLinks";
+import { Truck, LogOut } from "lucide-react";
 
 const menus = [
   {
     title: "Overview",
     href: "/dashboard",
-    icon: LayoutDashboard,
+    iconName: "LayoutDashboard",
   },
   {
     title: "Users & Drivers",
     href: "/dashboard/users",
-    icon: Users,
+    iconName: "Users",
   },
   {
     title: "Vehicles",
     href: "/vehicles",
-    icon: Truck,
+    iconName: "Truck",
   },
   {
     title: "Trips",
     href: "/trips",
-    icon: Map,
+    iconName: "Map",
   },
   {
     title: "Maintenance",
     href: "/maintenance",
-    icon: Wrench,
+    iconName: "Wrench",
   },
   {
     title: "Expenses",
     href: "/expences",
-    icon: Wallet,
+    iconName: "Wallet",
   },
   {
     title: "Fuel Logs",
     href: "/fuel-logs",
-    icon: Droplets,
+    iconName: "Droplets",
   },
   {
     title: "Reports",
     href: "/reports",
-    icon: BarChart3,
+    iconName: "BarChart3",
   },
   {
     title: "Settings",
     href: "/settings",
-    icon: SettingsIcon,
+    iconName: "Settings",
   },
 ];
 
@@ -67,11 +55,14 @@ export async function Sidebar() {
   const session = await auth();
   const userRole = session?.user?.role || "DRIVER";
 
-  const headersList = await headers();
-  const currentPath = headersList.get("x-invoke-path") || "/dashboard";
-
   // Load permissions dynamically
   const permissions = getPermissions();
+
+  const filteredMenus = menus.filter((menu) => {
+    const allowedRoles = permissions[menu.title];
+    if (!allowedRoles) return true;
+    return allowedRoles.includes(userRole);
+  });
 
   return (
     <aside className="hidden md:flex w-64 border-r border-slate-800 bg-slate-950 flex-col">
@@ -82,34 +73,7 @@ export async function Sidebar() {
         <h1 className="text-xl font-bold text-slate-100 tracking-tight">TransitOps</h1>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
-        {menus
-          .filter((menu) => {
-            const allowedRoles = permissions[menu.title];
-            // If no permissions defined for a tab, default to allowing it
-            if (!allowedRoles) return true;
-            return allowedRoles.includes(userRole);
-          })
-          .map((menu) => {
-            const Icon = menu.icon;
-            const active = currentPath === menu.href || currentPath.startsWith(menu.href + "/");
-
-            return (
-              <Link
-                key={menu.href}
-                href={menu.href}
-                className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-colors text-sm font-medium
-                  ${active
-                    ? "bg-indigo-500/10 text-indigo-400"
-                    : "text-slate-400 hover:bg-slate-900 hover:text-slate-200"
-                  }`}
-              >
-                <Icon size={18} className={active ? "text-indigo-400" : "text-slate-500"} />
-                <span>{menu.title}</span>
-              </Link>
-            );
-          })}
-      </nav>
+      <SidebarLinks menus={filteredMenus} />
 
       <div className="border-t border-slate-800 p-4">
         <form
