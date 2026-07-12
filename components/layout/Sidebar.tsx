@@ -8,6 +8,7 @@ import {
   Wrench,
   Wallet,
   BarChart3,
+  Droplets,
   LogOut,
 } from "lucide-react";
 import { auth, signOut } from "@/auth";
@@ -17,7 +18,7 @@ const menus = [
     title: "Overview",
     href: "/dashboard",
     icon: LayoutDashboard,
-    roles: ["ADMIN", "FLEET_MANAGER", "DRIVER"],
+    roles: ["ADMIN", "FLEET_MANAGER", "DRIVER", "SAFETY_OFFICER", "FINANCIAL_ANALYST"],
   },
   {
     title: "Users & Drivers",
@@ -37,13 +38,36 @@ const menus = [
     icon: Map,
     roles: ["ADMIN", "FLEET_MANAGER", "DRIVER"],
   },
+  {
+    title: "Maintenance",
+    href: "/maintenance",
+    icon: Wrench,
+    roles: ["ADMIN", "FLEET_MANAGER", "FINANCIAL_ANALYST"],
+  },
+  {
+    title: "Expenses",
+    href: "/expences",
+    icon: Wallet,
+    roles: ["ADMIN", "FLEET_MANAGER", "FINANCIAL_ANALYST"],
+  },
+  {
+    title: "Fuel Logs",
+    href: "/fuel-logs",
+    icon: Droplets,
+    roles: ["ADMIN", "FLEET_MANAGER", "FINANCIAL_ANALYST"],
+  },
+  {
+    title: "Reports",
+    href: "/reports",
+    icon: BarChart3,
+    roles: ["ADMIN", "FLEET_MANAGER", "FINANCIAL_ANALYST", "SAFETY_OFFICER"],
+  },
 ];
 
 export async function Sidebar() {
   const session = await auth();
   const userRole = session?.user?.role || "DRIVER";
 
-  // Use headers() to get the current pathname on the server component
   const headersList = await headers();
   const currentPath = headersList.get("x-invoke-path") || "/dashboard";
 
@@ -56,12 +80,11 @@ export async function Sidebar() {
         <h1 className="text-xl font-bold text-slate-100 tracking-tight">TransitOps</h1>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1.5">
+      <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
         {menus
           .filter((menu) => menu.roles.includes(userRole))
           .map((menu) => {
             const Icon = menu.icon;
-            // Match exactly or starts with (for nested routes)
             const active = currentPath === menu.href || currentPath.startsWith(menu.href + "/");
 
             return (
