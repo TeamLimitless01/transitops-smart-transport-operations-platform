@@ -113,6 +113,9 @@ model Driver {
 
   status             DriverStatus  @default(AVAILABLE)
 
+  userId            String         
+  user              User           @relation(fields: [userId], references: [id])
+
   trips              Trip[]
 
   createdAt          DateTime      @default(now())
