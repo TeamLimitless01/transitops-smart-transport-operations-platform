@@ -30,7 +30,15 @@ export default async function ReportsPage() {
     prisma.expense.findMany(),
     prisma.maintenance.findMany(),
     prisma.vehicle.findMany(),
-    prisma.driver.findMany(),
+    prisma.driver.findMany({
+      include: {
+        trips: {
+          include: {
+            expenses: true,
+          },
+        },
+      },
+    }),
   ]);
 
   // Format helper functions for server component
@@ -39,8 +47,18 @@ export default async function ReportsPage() {
     return val;
   };
 
+  const formatDistance = (km: number | null) => {
+    if (km === null) return "—";
+    const val = convertDistance(km);
+    return `${Math.round(val).toLocaleString()} ${settings.distanceUnit === "miles" ? "mi" : "km"}`;
+  };
+
   const formatCost = (amount: number) => {
     return `${settings.currencySymbol}${amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  };
+
+  const formatCostPrecise = (amount: number) => {
+    return `${settings.currencySymbol}${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   // Calculate stats
@@ -66,9 +84,6 @@ export default async function ReportsPage() {
   // Fleet Utilization (%)
   const onTripVehicles = vehicles.filter(v => v.status === "ON_TRIP").length;
   const fleetUtilization = vehicles.length > 0 ? (onTripVehicles / vehicles.length) * 100 : 0;
-
-  const availableVehicles = vehicles.filter((v) => v.status === "AVAILABLE");
-  const availableDrivers = drivers.filter((d) => d.status === "AVAILABLE");
 
   // Per-trip expense totals for top-cost trips
   const tripsWithCost = trips
@@ -114,6 +129,30 @@ export default async function ReportsPage() {
       roi,
     };
   }).sort((a, b) => b.roi - a.roi).slice(0, 5);
+
+  // Driver performance calculations
+  const driverPerformance = drivers.map(d => {
+    const dTrips = d.trips;
+    const dCompleted = dTrips.filter(t => t.status === "COMPLETED");
+    const dActive = dTrips.filter(t => t.status === "DISPATCHED").length;
+    
+    const dDistance = dCompleted.reduce((s, t) => s + (t.actualDistance || 0), 0);
+    const dFuel = dCompleted.reduce((s, t) => s + (t.fuelConsumed || 0), 0);
+    const dEfficiency = dFuel > 0 
+      ? convertDistance(dDistance) / dFuel 
+      : 0;
+
+    const dExpenses = dTrips.reduce((s, t) => s + t.expenses.reduce((se, e) => se + e.cost, 0), 0);
+
+    return {
+      ...d,
+      completedCount: dCompleted.length,
+      activeCount: dActive,
+      distance: dDistance,
+      efficiency: dEfficiency,
+      expenses: dExpenses,
+    };
+  }).sort((a, b) => b.completedCount - a.completedCount);
 
   return (
     <div className="flex flex-col gap-8">
@@ -247,6 +286,63 @@ export default async function ReportsPage() {
               ) : (
                 <tr>
                   <td colSpan={6} className="text-center text-slate-500 py-6 text-sm">No vehicle ROI data available.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Driver Performance & Analytics Card */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-5 flex items-center gap-2">
+          <Users size={16} className="text-indigo-400" />
+          Driver Performance & Analytics
+        </h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-800 bg-slate-950/30">
+                <th className="px-4 py-3 text-xs font-bold uppercase text-slate-500">Driver</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase text-slate-500 text-center">Trips Completed</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase text-slate-500 text-center">Active Trips</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase text-slate-500 text-right">Distance Driven</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase text-slate-500 text-right">Avg Efficiency</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase text-slate-500 text-right">Expenses Incurred</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/40">
+              {driverPerformance.length > 0 ? (
+                driverPerformance.map((d) => (
+                  <tr key={d.id} className="hover:bg-slate-800/20 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-slate-200">{d.name}</span>
+                        <span className="text-xs text-slate-500 font-mono">{d.licenseNumber}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-300 text-center">{d.completedCount}</td>
+                    <td className="px-4 py-3 text-sm text-slate-300 text-center">
+                      {d.activeCount > 0 ? (
+                        <span className="bg-blue-500/10 text-blue-400 px-2.5 py-0.5 rounded-full text-xs font-semibold">{d.activeCount}</span>
+                      ) : (
+                        <span className="text-slate-500">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-300 text-right">{formatDistance(d.distance)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-300 text-right">
+                      {d.efficiency > 0 ? (
+                        <span className="text-teal-400 font-semibold">{d.efficiency.toFixed(2)} {settings.distanceUnit === "miles" ? "mi/L" : "km/L"}</span>
+                      ) : (
+                        <span className="text-slate-500">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm font-bold text-slate-300 text-right">{formatCostPrecise(d.expenses)}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="text-center text-slate-500 py-6 text-sm">No driver performance data available.</td>
                 </tr>
               )}
             </tbody>
