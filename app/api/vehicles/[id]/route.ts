@@ -1,67 +1,33 @@
+import { vehicleSchema } from "@/app/schemas/vehicle.schema";
+import { deleteVehicle, getVehicleById, updateVehicle } from "@/app/services/vehicle.service";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 
-interface Params {
+interface Props {
   params: Promise<{
     id: string;
   }>;
 }
 
-// GET ONE
 export async function GET(
   req: NextRequest,
-  { params }: Params
-) {
-  const { id } = await params;
-
-  const vehicle = await prisma.vehicle.findUnique({
-    where: {
-      id,
-    },
-  });
-
-  if (!vehicle) {
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Vehicle not found.",
-      },
-      { status: 404 }
-    );
-  }
-
-  return NextResponse.json({
-    success: true,
-    data: vehicle,
-  });
-}
-
-// UPDATE
-export async function PUT(
-  req: NextRequest,
-  { params }: Params
+  { params }: Props
 ) {
   try {
     const { id } = await params;
 
-    const body = await req.json();
+    const vehicle = await getVehicleById(id);
 
-    const vehicle = await prisma.vehicle.update({
-      where: {
-        id,
-      },
-      data: {
-        registrationNumber: body.registrationNumber,
-        name: body.name,
-        model: body.model,
-        type: body.type,
-        maxLoadCapacity: Number(body.maxLoadCapacity),
-        odometer: Number(body.odometer),
-        acquisitionCost: Number(body.acquisitionCost),
-        region: body.region,
-        status: body.status,
-      },
-    });
+    if (!vehicle) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Vehicle not found.",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -73,26 +39,55 @@ export async function PUT(
     return NextResponse.json(
       {
         success: false,
-        message: "Unable to update vehicle.",
+        message: "Something went wrong.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }
 
-// DELETE
-export async function DELETE(
+export async function PUT(
   req: NextRequest,
-  { params }: Params
+  { params }: Props
 ) {
   try {
     const { id } = await params;
 
-    await prisma.vehicle.delete({
-      where: {
-        id,
-      },
+    const body = await req.json();
+
+    const validatedData = vehicleSchema.parse(body);
+
+    const vehicle = await updateVehicle(id, validatedData);
+
+    return NextResponse.json({
+      success: true,
+      data: vehicle,
     });
+  } catch (error: any) {
+    console.error(error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: error.message,
+      },
+      {
+        status: 400,
+      }
+    );
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: Props
+) {
+  try {
+    const { id } = await params;
+
+    await deleteVehicle(id);
 
     return NextResponse.json({
       success: true,
@@ -106,7 +101,9 @@ export async function DELETE(
         success: false,
         message: "Unable to delete vehicle.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }

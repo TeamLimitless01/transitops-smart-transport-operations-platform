@@ -1,46 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { VehicleStatus } from "@/app/generated/prisma";
+import { vehicleSchema } from "@/app/schemas/vehicle.schema";
+import { createVehicle, getVehicles } from "@/app/services/vehicle.service";
 
-// GET /api/vehicles
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
 
     const search = searchParams.get("search") || "";
-    const status = searchParams.get("status") || "";
 
-    const vehicles = await prisma.vehicle.findMany({
-      where: {
-        AND: [
-          search
-            ? {
-                OR: [
-                  {
-                    name: {
-                      contains: search,
-                      mode: "insensitive",
-                    },
-                  },
-                  {
-                    registrationNumber: {
-                      contains: search,
-                      mode: "insensitive",
-                    },
-                  },
-                ],
-              }
-            : {},
-          status
-            ? {
-                status: status as any,
-              }
-            : {},
-        ],
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const status =
+      (searchParams.get("status") as VehicleStatus | null) ??
+      undefined;
+
+    const vehicles = await getVehicles(search, status);
 
     return NextResponse.json({
       success: true,
@@ -52,47 +26,43 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to fetch vehicles.",
+        message: "Unable to fetch vehicles.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }
 
-// POST /api/vehicles
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const vehicle = await prisma.vehicle.create({
-      data: {
-        registrationNumber: body.registrationNumber,
-        name: body.name,
-        model: body.model,
-        type: body.type,
-        maxLoadCapacity: Number(body.maxLoadCapacity),
-        odometer: Number(body.odometer),
-        acquisitionCost: Number(body.acquisitionCost),
-        region: body.region,
-      },
-    });
+    const validatedData = vehicleSchema.parse(body);
+
+    const vehicle = await createVehicle(validatedData);
 
     return NextResponse.json(
       {
         success: true,
         data: vehicle,
       },
-      { status: 201 }
+      {
+        status: 201,
+      }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
 
     return NextResponse.json(
       {
         success: false,
-        message: "Unable to create vehicle.",
+        message: error.message,
       },
-      { status: 500 }
+      {
+        status: 400,
+      }
     );
   }
 }
