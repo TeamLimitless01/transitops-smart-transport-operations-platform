@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Search, Wallet, SlidersHorizontal } from "lucide-react";
+import { useSystemSettings } from "@/app/providers";
 
 interface Expense {
   id: string;
@@ -30,6 +31,7 @@ const TYPE_META: Record<string, { label: string; color: string }> = {
 const TYPES = ["ALL", "MAINTENANCE", "TOLL", "PARKING", "OTHER"];
 
 export default function ExpensesManager({ initialExpenses }: ExpensesManagerProps) {
+  const settings = useSystemSettings();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
 
@@ -59,7 +61,7 @@ export default function ExpensesManager({ initialExpenses }: ExpensesManagerProp
                 <span className={`text-[10px] font-bold tracking-wider px-2 py-1 rounded-full ${TYPE_META[type].color}`}>{TYPE_META[type].label}</span>
                 <span className="text-xs text-slate-500">{count} entries</span>
               </div>
-              <p className="text-2xl font-bold text-slate-100 mt-3">${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-2xl font-bold text-slate-100 mt-3">{settings.currencySymbol}{total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
             </div>
           );
         })}
@@ -88,7 +90,7 @@ export default function ExpensesManager({ initialExpenses }: ExpensesManagerProp
           </div>
         </div>
         <div className="text-sm text-slate-400">
-          Total: <span className="font-bold text-slate-200">${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          Total: <span className="font-bold text-slate-200">{settings.currencySymbol}{totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
         </div>
       </div>
 
@@ -131,7 +133,7 @@ export default function ExpensesManager({ initialExpenses }: ExpensesManagerProp
                       {expense.description || <span className="text-slate-600">—</span>}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <span className="text-sm font-bold text-slate-200">${expense.cost.toFixed(2)}</span>
+                      <span className="text-sm font-bold text-slate-200">{settings.currencySymbol}{expense.cost.toFixed(2)}</span>
                     </td>
                   </tr>
                 ))

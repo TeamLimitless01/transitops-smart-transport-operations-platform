@@ -2,10 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import {
-  BarChart3, TrendingUp, Truck, Map, Wrench, Droplets, Wallet, Users
+  BarChart3, TrendingUp, Truck, Map, Wrench, Droplets, Wallet, Users, Compass, Percent
 } from "lucide-react";
 
 import { hasAccess } from "@/lib/permissions";
+import { getSystemSettings } from "@/lib/settings";
+import ReportsExport from "@/components/reports/ReportsExport";
 
 export default async function ReportsPage() {
   const session = await auth();
@@ -15,11 +17,14 @@ export default async function ReportsPage() {
     redirect("/dashboard");
   }
 
+  const settings = getSystemSettings();
+
   const [trips, expenses, maintenance, vehicles, drivers] = await Promise.all([
     prisma.trip.findMany({
       include: {
         expenses: true,
         driver: { select: { name: true } },
+        vehicle: { select: { name: true, registrationNumber: true } },
       },
     }),
     prisma.expense.findMany(),
@@ -27,6 +32,16 @@ export default async function ReportsPage() {
     prisma.vehicle.findMany(),
     prisma.driver.findMany(),
   ]);
+
+  // Format helper functions for server component
+  const convertDistance = (km: number) => {
+    const val = settings.distanceUnit === "miles" ? km * 0.621371 : km;
+    return val;
+  };
+
+  const formatCost = (amount: number) => {
+    return `${settings.currencySymbol}${amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  };
 
   // Calculate stats
   const completedTrips = trips.filter((t) => t.status === "COMPLETED");
@@ -37,6 +52,21 @@ export default async function ReportsPage() {
   const totalFuelLiters = fuelExpenses.reduce((s, e) => s + e.liters, 0);
   const activeMaintenance = maintenance.filter((m) => m.status === "ACTIVE");
   const totalMaintenanceCost = maintenance.reduce((s, m) => s + m.cost, 0);
+  
+  // New KPIs
+  const totalOperationalCost = totalFuelCost + totalMaintenanceCost;
+  
+  // Fuel Efficiency (Distance / Fuel)
+  const totalActualDistance = completedTrips.reduce((s, t) => s + (t.actualDistance || 0), 0);
+  const totalFuelConsumed = completedTrips.reduce((s, t) => s + (t.fuelConsumed || 0), 0);
+  const avgFuelEfficiency = totalFuelConsumed > 0 
+    ? convertDistance(totalActualDistance) / totalFuelConsumed 
+    : 0;
+
+  // Fleet Utilization (%)
+  const onTripVehicles = vehicles.filter(v => v.status === "ON_TRIP").length;
+  const fleetUtilization = vehicles.length > 0 ? (onTripVehicles / vehicles.length) * 100 : 0;
+
   const availableVehicles = vehicles.filter((v) => v.status === "AVAILABLE");
   const availableDrivers = drivers.filter((d) => d.status === "AVAILABLE");
 
@@ -60,13 +90,41 @@ export default async function ReportsPage() {
     OTHER: "bg-slate-500",
   };
 
+  // Vehicles with ROI and operational metrics
+  const vehiclesWithROI = vehicles.map(v => {
+    const vFuel = expenses.filter(e => e.vehicleId === v.id && e.type === "FUEL").reduce((s, e) => s + e.cost, 0);
+    const vMaint = maintenance.filter(m => m.vehicleId === v.id).reduce((s, m) => s + m.cost, 0);
+    const vTolls = expenses.filter(e => e.vehicleId === v.id && e.type === "TOLL").reduce((s, e) => s + e.cost, 0);
+    const vTrips = trips.filter(t => t.vehicleId === v.id && t.status === "COMPLETED");
+    
+    // Assume revenue rate is $2.50 per km (approx $4.00 per mile)
+    const vRevenue = vTrips.reduce((s, t) => s + (t.actualDistance || t.plannedDistance) * 2.50, 0);
+    const vFuelCostAndMaint = vFuel + vMaint;
+    
+    const roi = v.acquisitionCost > 0 
+      ? ((vRevenue - vFuelCostAndMaint) / v.acquisitionCost) * 100 
+      : 0;
+
+    return {
+      ...v,
+      fuelCost: vFuel,
+      maintenanceCost: vMaint,
+      operationalCost: vFuelCostAndMaint + vTolls,
+      revenue: vRevenue,
+      roi,
+    };
+  }).sort((a, b) => b.roi - a.roi).slice(0, 5);
+
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Fleet Reports</h1>
-        <p className="text-sm text-slate-400 mt-1">
-          Overview of fleet performance, costs, and operational metrics.
-        </p>
+      <div className="flex items-center justify-between border-b border-slate-800 pb-5 mb-2 flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-100 tracking-tight">Fleet Reports</h1>
+          <p className="text-sm text-slate-400 mt-1">
+            Overview of fleet performance, costs, and operational metrics.
+          </p>
+        </div>
+        <ReportsExport trips={JSON.parse(JSON.stringify(trips))} />
       </div>
 
       {/* KPI Cards */}
@@ -74,12 +132,12 @@ export default async function ReportsPage() {
         {[
           { label: "Total Trips", value: trips.length, sub: `${activeTrips.length} active`, icon: Map, color: "text-indigo-400 bg-indigo-500/10", border: "border-l-indigo-500" },
           { label: "Completed Trips", value: completedTrips.length, sub: `${Math.round((completedTrips.length / Math.max(trips.length, 1)) * 100)}% completion rate`, icon: TrendingUp, color: "text-emerald-400 bg-emerald-500/10", border: "border-l-emerald-500" },
-          { label: "Total Expenses", value: `$${totalExpenses.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, sub: `${expenses.length} records`, icon: Wallet, color: "text-amber-400 bg-amber-500/10", border: "border-l-amber-500" },
-          { label: "Fuel Cost", value: `$${totalFuelCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, sub: `${totalFuelLiters.toFixed(0)}L total`, icon: Droplets, color: "text-blue-400 bg-blue-500/10", border: "border-l-blue-500" },
-          { label: "Maintenance Cost", value: `$${totalMaintenanceCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, sub: `${activeMaintenance.length} active`, icon: Wrench, color: "text-red-400 bg-red-500/10", border: "border-l-red-500" },
-          { label: "Fleet Size", value: vehicles.length, sub: `${availableVehicles.length} available`, icon: Truck, color: "text-purple-400 bg-purple-500/10", border: "border-l-purple-500" },
-          { label: "Drivers", value: drivers.length, sub: `${availableDrivers.length} available`, icon: Users, color: "text-cyan-400 bg-cyan-500/10", border: "border-l-cyan-500" },
-          { label: "Avg Cost/Trip", value: `$${(totalExpenses / Math.max(completedTrips.length, 1)).toFixed(0)}`, sub: "per completed trip", icon: BarChart3, color: "text-slate-400 bg-slate-500/10", border: "border-l-slate-500" },
+          { label: "Total Expenses", value: formatCost(totalExpenses), sub: `${expenses.length} records`, icon: Wallet, color: "text-amber-400 bg-amber-500/10", border: "border-l-amber-500" },
+          { label: "Fuel Cost", value: formatCost(totalFuelCost), sub: `${totalFuelLiters.toFixed(0)}L total`, icon: Droplets, color: "text-blue-400 bg-blue-500/10", border: "border-l-blue-500" },
+          { label: "Maintenance Cost", value: formatCost(totalMaintenanceCost), sub: `${activeMaintenance.length} active`, icon: Wrench, color: "text-red-400 bg-red-500/10", border: "border-l-red-500" },
+          { label: "Operational Cost", value: formatCost(totalOperationalCost), sub: "Fuel + Maintenance", icon: BarChart3, color: "text-orange-400 bg-orange-500/10", border: "border-l-orange-500" },
+          { label: "Fuel Efficiency", value: `${avgFuelEfficiency.toFixed(2)} ${settings.distanceUnit === "miles" ? "mi/L" : "km/L"}`, sub: "Avg distance per liter", icon: Compass, color: "text-teal-400 bg-teal-500/10", border: "border-l-teal-500" },
+          { label: "Fleet Utilization", value: `${fleetUtilization.toFixed(1)}%`, sub: `${onTripVehicles} units active`, icon: Percent, color: "text-pink-400 bg-pink-500/10", border: "border-l-pink-500" },
         ].map(({ label, value, sub, icon: Icon, color, border }) => (
           <div key={label} className={`bg-slate-900 border border-slate-800 rounded-2xl p-5 border-l-4 ${border}`}>
             <div className="flex items-center justify-between mb-3">
@@ -109,7 +167,7 @@ export default async function ReportsPage() {
                       <span className="text-sm font-medium text-slate-300">{type.charAt(0) + type.slice(1).toLowerCase()}</span>
                       <div className="flex items-center gap-3">
                         <span className="text-xs text-slate-500">{pct.toFixed(1)}%</span>
-                        <span className="text-sm font-bold text-slate-200">${cost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        <span className="text-sm font-bold text-slate-200">{formatCost(cost)}</span>
                       </div>
                     </div>
                     <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
@@ -142,7 +200,7 @@ export default async function ReportsPage() {
                     <p className="text-sm font-semibold text-slate-200 truncate">{trip.source} → {trip.destination}</p>
                     <p className="text-xs text-slate-500">{trip.driver?.name || "—"} · {new Date(trip.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
                   </div>
-                  <span className="text-sm font-bold text-slate-200 shrink-0">${trip.totalCost.toFixed(2)}</span>
+                  <span className="text-sm font-bold text-slate-200 shrink-0">{formatCost(trip.totalCost)}</span>
                 </div>
               ))
             ) : (
@@ -152,7 +210,51 @@ export default async function ReportsPage() {
         </div>
       </div>
 
-      {/* Fleet Status */}
+      {/* Vehicle ROI Card */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-5">Top 5 Vehicles ROI & Performance</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-800 bg-slate-950/30">
+                <th className="px-4 py-3 text-xs font-bold uppercase text-slate-500">Vehicle</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase text-slate-500 text-right">Revenue</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase text-slate-500 text-right">Fuel Cost</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase text-slate-500 text-right">Maint. Cost</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase text-slate-500 text-right">Acquisition</th>
+                <th className="px-4 py-3 text-xs font-bold uppercase text-slate-500 text-right">ROI</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/40">
+              {vehiclesWithROI.length > 0 ? (
+                vehiclesWithROI.map((v) => (
+                  <tr key={v.id} className="hover:bg-slate-800/20 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-slate-200">{v.name}</span>
+                        <span className="text-xs text-slate-500 font-mono">{v.registrationNumber}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-300 text-right">{formatCost(v.revenue)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-300 text-right">{formatCost(v.fuelCost)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-300 text-right">{formatCost(v.maintenanceCost)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-300 text-right">{formatCost(v.acquisitionCost)}</td>
+                    <td className={`px-4 py-3 text-sm font-bold text-right ${v.roi >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                      {v.roi.toFixed(1)}%
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="text-center text-slate-500 py-6 text-sm">No vehicle ROI data available.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Fleet Status Overview */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
         <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-5">Fleet Status Overview</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Circle, Plus, X, Loader2, Check } from "lucide-react";
+import { useSystemSettings } from "@/app/providers";
 
 interface Expense {
   id: string;
@@ -47,11 +48,27 @@ const EXPENSE_TYPES = ["FUEL", "MAINTENANCE", "TOLL", "PARKING", "OTHER"];
 
 export default function DriverDashboard({ driverName, trips }: DriverDashboardProps) {
   const router = useRouter();
+  const settings = useSystemSettings();
   const [allTrips, setAllTrips] = useState<Trip[]>(trips);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
+  const [completeModalOpen, setCompleteModalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
+
+  // Complete Trip Form State
+  const [actualDistance, setActualDistance] = useState("");
+  const [fuelConsumed, setFuelConsumed] = useState("");
+
+  const formatDistance = (km: number | null) => {
+    if (km === null || km === undefined) return "—";
+    const val = settings.distanceUnit === "miles" ? km * 0.621371 : km;
+    return `${Math.round(val).toLocaleString()} ${settings.distanceUnit === "miles" ? "mi" : "km"}`;
+  };
+
+  const formatCost = (amount: number) => {
+    return `${settings.currencySymbol}${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
 
   // Expense form
   const [expType, setExpType] = useState("FUEL");
@@ -119,22 +136,44 @@ export default function DriverDashboard({ driverName, trips }: DriverDashboardPr
     });
   };
 
-  const handleCompleteTrip = async (tripId: string) => {
-    if (!confirm("Mark this trip as completed?")) return;
-    try {
-      const res = await fetch(`/api/trips/${tripId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "COMPLETED" }),
-      });
-      if (!res.ok) { alert("Failed to complete trip"); return; }
-      const updatedTrip = await res.json();
-      setAllTrips(allTrips.map((t) => t.id === tripId ? updatedTrip : t));
-      if (selectedTrip?.id === tripId) setSelectedTrip(updatedTrip);
-      router.refresh();
-    } catch {
-      alert("Network error.");
-    }
+  const handleCompleteTrip = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTrip) return;
+    setServerError(null);
+
+    startTransition(async () => {
+      try {
+        const distanceKm = settings.distanceUnit === "miles"
+          ? parseFloat(actualDistance) / 0.621371
+          : parseFloat(actualDistance);
+
+        const res = await fetch(`/api/trips/${selectedTrip.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "COMPLETED",
+            actualDistance: distanceKm,
+            fuelConsumed: parseFloat(fuelConsumed),
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          setServerError(data.error || "Failed to complete trip");
+          return;
+        }
+
+        const updatedTrips = allTrips.map((t) => t.id === selectedTrip.id ? data : t);
+        setAllTrips(updatedTrips);
+        setSelectedTrip(data);
+        setCompleteModalOpen(false);
+        setActualDistance("");
+        setFuelConsumed("");
+        router.refresh();
+      } catch (err) {
+        setServerError("Network error. Please try again.");
+      }
+    });
   };
 
   const totalExpenses = (expenses: Expense[]) => expenses.reduce((s, e) => s + e.cost, 0);
@@ -197,11 +236,11 @@ export default function DriverDashboard({ driverName, trips }: DriverDashboardPr
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Distance</span>
-                    <span className="text-sm font-medium text-slate-300">{activeTrip.plannedDistance} km</span>
+                    <span className="text-sm font-medium text-slate-300">{formatDistance(activeTrip.plannedDistance)}</span>
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Expenses</span>
-                    <span className="text-sm font-medium text-slate-300">{activeTrip.expenses.length} &bull; ${totalExpenses(activeTrip.expenses).toFixed(2)}</span>
+                    <span className="text-sm font-medium text-slate-300">{activeTrip.expenses.length} &bull; {formatCost(totalExpenses(activeTrip.expenses))}</span>
                   </div>
                 </div>
                 
@@ -268,7 +307,7 @@ export default function DriverDashboard({ driverName, trips }: DriverDashboardPr
                   <div className="flex flex-col gap-1"><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Vehicle</span><span className="text-sm font-medium text-slate-300">{selectedTrip.vehicle.name}</span></div>
                   <div className="flex flex-col gap-1"><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Reg #</span><span className="text-sm font-medium text-slate-300">{selectedTrip.vehicle.registrationNumber}</span></div>
                   <div className="flex flex-col gap-1"><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Cargo</span><span className="text-sm font-medium text-slate-300">{selectedTrip.cargoWeight} kg</span></div>
-                  <div className="flex flex-col gap-1"><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Planned Dist.</span><span className="text-sm font-medium text-slate-300">{selectedTrip.plannedDistance} km</span></div>
+                  <div className="flex flex-col gap-1"><span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Planned Dist.</span><span className="text-sm font-medium text-slate-300">{formatDistance(selectedTrip.plannedDistance)}</span></div>
                 </div>
 
                 {/* Expenses */}
@@ -296,7 +335,7 @@ export default function DriverDashboard({ driverName, trips }: DriverDashboardPr
                              {exp.description && <span className="text-xs text-slate-500">{exp.description}</span>}
                            </div>
                            <div className="flex flex-col items-end gap-0.5">
-                             <span className="text-sm font-bold text-emerald-400">${exp.cost.toFixed(2)}</span>
+                             <span className="text-sm font-bold text-emerald-400">{formatCost(exp.cost)}</span>
                              {exp.type === "FUEL" && exp.liters > 0 && (
                                <span className="text-[10px] font-semibold text-slate-500">{exp.liters}L</span>
                              )}
@@ -305,7 +344,7 @@ export default function DriverDashboard({ driverName, trips }: DriverDashboardPr
                       ))}
                       <div className="flex justify-between items-center pt-3 mt-1 border-t border-slate-800">
                         <span className="text-sm font-bold text-slate-300">Total</span>
-                        <span className="text-lg font-bold text-slate-100">${totalExpenses(selectedTrip.expenses).toFixed(2)}</span>
+                        <span className="text-lg font-bold text-slate-100">{formatCost(totalExpenses(selectedTrip.expenses))}</span>
                       </div>
                     </div>
                   )}
@@ -313,7 +352,7 @@ export default function DriverDashboard({ driverName, trips }: DriverDashboardPr
 
                 {selectedTrip.status === "DISPATCHED" && (
                   <button
-                    onClick={() => handleCompleteTrip(selectedTrip.id)}
+                    onClick={() => setCompleteModalOpen(true)}
                     className="w-full mt-4 flex items-center justify-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 py-3 rounded-xl font-bold transition-colors"
                   >
                     <Check size={18} /> Mark as Completed
@@ -374,7 +413,7 @@ export default function DriverDashboard({ driverName, trips }: DriverDashboardPr
               )}
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Amount ($)</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Amount ({settings.currencySymbol})</label>
                 <input 
                   type="number" min="0" step="0.01" placeholder="e.g. 78.50" 
                   value={expAmount} onChange={(e) => setExpAmount(e.target.value)} 
@@ -417,6 +456,69 @@ export default function DriverDashboard({ driverName, trips }: DriverDashboardPr
                   disabled={isPending}
                 >
                   {isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : "Save Expense"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Complete Trip Modal */}
+      {completeModalOpen && selectedTrip && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+              <h3 className="text-lg font-bold text-slate-100">Complete Trip</h3>
+              <button 
+                onClick={() => { setCompleteModalOpen(false); setActualDistance(""); setFuelConsumed(""); setServerError(null); }}
+                className="text-slate-500 hover:text-slate-300 transition-colors p-1"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleCompleteTrip} className="p-6 flex flex-col gap-4">
+              {serverError && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-xl">
+                  {serverError}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Actual Distance ({settings.distanceUnit === "miles" ? "mi" : "km"})</label>
+                <input 
+                  type="number" min="0" step="0.1" placeholder={settings.distanceUnit === "miles" ? "e.g. 210" : "e.g. 340"} 
+                  value={actualDistance} onChange={(e) => setActualDistance(e.target.value)} 
+                  className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" 
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Fuel Consumed (Liters)</label>
+                <input 
+                  type="number" min="0" step="0.1" placeholder="e.g. 45" 
+                  value={fuelConsumed} onChange={(e) => setFuelConsumed(e.target.value)} 
+                  className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" 
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 mt-4">
+                <button 
+                  type="button" 
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
+                  onClick={() => { setCompleteModalOpen(false); setActualDistance(""); setFuelConsumed(""); setServerError(null); }} 
+                  disabled={isPending}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-bold transition-colors flex items-center justify-center min-w-[120px] disabled:opacity-70"
+                  disabled={isPending}
+                >
+                  {isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : "Complete Trip"}
                 </button>
               </div>
             </form>

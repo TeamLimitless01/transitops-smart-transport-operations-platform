@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Wrench, CheckCircle2, X, Loader2, Clock, Info } from "lucide-react";
+import { useSystemSettings } from "@/app/providers";
 
 interface Vehicle {
   id: string;
@@ -43,6 +44,7 @@ const STATUS_META: Record<string, { label: string; color: string; border: string
 
 export default function MaintenanceManager({ initialRecords, vehicles }: MaintenanceManagerProps) {
   const router = useRouter();
+  const settings = useSystemSettings();
   const [records, setRecords] = useState<MaintenanceRecord[]>(initialRecords);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"ALL" | "ACTIVE" | "COMPLETED">("ALL");
@@ -137,7 +139,7 @@ export default function MaintenanceManager({ initialRecords, vehicles }: Mainten
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 border-l-4 border-l-blue-500">
           <span className="text-2xl font-bold text-blue-400">
-            ${records.reduce((s, r) => s + r.cost, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            {settings.currencySymbol}{records.reduce((s, r) => s + r.cost, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </span>
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mt-1">Total Costs</p>
         </div>
@@ -217,7 +219,7 @@ export default function MaintenanceManager({ initialRecords, vehicles }: Mainten
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-bold text-slate-300">
-                      ${record.cost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      {settings.currencySymbol}{record.cost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-400">
                       {record.startDate ? new Date(record.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
@@ -306,7 +308,7 @@ export default function MaintenanceManager({ initialRecords, vehicles }: Mainten
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Estimated Cost ($)</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Estimated Cost ({settings.currencySymbol})</label>
                   <input type="number" min="0" step="0.01" placeholder="e.g. 1200" value={cost} onChange={(e) => setCost(e.target.value)}
                     className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all placeholder:text-slate-600" />
                 </div>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Search, Droplets } from "lucide-react";
+import { useSystemSettings } from "@/app/providers";
 
 interface FuelLog {
   id: string;
@@ -20,6 +21,7 @@ interface FuelLogsManagerProps {
 }
 
 export default function FuelLogsManager({ initialLogs }: FuelLogsManagerProps) {
+  const settings = useSystemSettings();
   const [search, setSearch] = useState("");
 
   const filtered = initialLogs.filter((log) => {
@@ -50,13 +52,13 @@ export default function FuelLogsManager({ initialLogs }: FuelLogsManagerProps) {
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 border-l-4 border-l-indigo-500">
           <span className="text-2xl font-bold text-indigo-400">
-            ${initialLogs.reduce((s, l) => s + l.cost, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            {settings.currencySymbol}{initialLogs.reduce((s, l) => s + l.cost, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </span>
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mt-1">Total Fuel Cost</p>
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 border-l-4 border-l-amber-500">
           <span className="text-2xl font-bold text-amber-400">
-            ${(initialLogs.reduce((s, l) => s + l.cost, 0) / Math.max(initialLogs.reduce((s, l) => s + l.liters, 0), 1)).toFixed(2)}/L
+            {settings.currencySymbol}{(initialLogs.reduce((s, l) => s + l.cost, 0) / Math.max(initialLogs.reduce((s, l) => s + l.liters, 0), 1)).toFixed(2)}/L
           </span>
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mt-1">Avg Cost/Liter</p>
         </div>
@@ -77,7 +79,7 @@ export default function FuelLogsManager({ initialLogs }: FuelLogsManagerProps) {
         <div className="text-sm text-slate-400 flex gap-4">
           <span>{filtered.length} entries</span>
           <span className="text-slate-600">|</span>
-          <span><span className="font-bold text-slate-200">{totalLiters.toFixed(1)}L</span> · <span className="font-bold text-slate-200">${totalCost.toFixed(2)}</span></span>
+          <span><span className="font-bold text-slate-200">{totalLiters.toFixed(1)}L</span> · <span className="font-bold text-slate-200">{settings.currencySymbol}{totalCost.toFixed(2)}</span></span>
         </div>
       </div>
 
@@ -93,7 +95,7 @@ export default function FuelLogsManager({ initialLogs }: FuelLogsManagerProps) {
                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Description</th>
                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Liters</th>
                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Cost</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">$/L</th>
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">{settings.currencySymbol}/L</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
@@ -124,11 +126,11 @@ export default function FuelLogsManager({ initialLogs }: FuelLogsManagerProps) {
                       <span className="text-sm font-semibold text-blue-400">{log.liters.toFixed(1)}L</span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <span className="text-sm font-bold text-slate-200">${log.cost.toFixed(2)}</span>
+                      <span className="text-sm font-bold text-slate-200">{settings.currencySymbol}{log.cost.toFixed(2)}</span>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <span className="text-xs text-slate-500">
-                        {log.liters > 0 ? `$${(log.cost / log.liters).toFixed(2)}` : "—"}
+                        {log.liters > 0 ? `${settings.currencySymbol}${(log.cost / log.liters).toFixed(2)}` : "—"}
                       </span>
                     </td>
                   </tr>

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Truck, X, Loader2 } from "lucide-react";
+import { useSystemSettings } from "@/app/providers";
 
 interface Vehicle {
   id: string;
@@ -32,6 +33,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function VehicleTable({ initialVehicles }: VehicleTableProps) {
   const router = useRouter();
+  const settings = useSystemSettings();
   const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -74,12 +76,16 @@ export default function VehicleTable({ initialVehicles }: VehicleTableProps) {
 
     startTransition(async () => {
       try {
+        const odometerKm = settings.distanceUnit === "miles"
+          ? parseFloat(odometer) / 0.621371
+          : parseFloat(odometer);
+
         const res = await fetch("/api/vehicles", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             registrationNumber, name, model, type,
-            maxLoadCapacity, odometer, acquisitionCost,
+            maxLoadCapacity, odometer: odometerKm, acquisitionCost,
             region: region || undefined,
           }),
         });
@@ -167,7 +173,11 @@ export default function VehicleTable({ initialVehicles }: VehicleTableProps) {
                         {vehicle.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-300">{vehicle.odometer.toLocaleString()} km</td>
+                    <td className="px-6 py-4 text-sm text-slate-300">
+                      {settings.distanceUnit === "miles"
+                        ? `${Math.round(vehicle.odometer * 0.621371).toLocaleString()} mi`
+                        : `${vehicle.odometer.toLocaleString()} km`}
+                    </td>
                   </tr>
                 ))
               ) : (
@@ -231,12 +241,12 @@ export default function VehicleTable({ initialVehicles }: VehicleTableProps) {
                   {formErrors.maxLoadCapacity && <p className="text-[10px] text-red-400">{formErrors.maxLoadCapacity[0]}</p>}
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Odometer (km)</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Odometer ({settings.distanceUnit === "miles" ? "mi" : "km"})</label>
                   <input type="number" placeholder="e.g. 50000" value={odometer} onChange={(e) => setOdometer(e.target.value)} className={`bg-slate-950 border text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${formErrors.odometer ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-slate-800 focus:border-indigo-500 focus:ring-indigo-500"}`} />
                   {formErrors.odometer && <p className="text-[10px] text-red-400">{formErrors.odometer[0]}</p>}
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Acquisition Cost ($)</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Acquisition Cost ({settings.currencySymbol})</label>
                   <input type="number" placeholder="e.g. 120000" value={acquisitionCost} onChange={(e) => setAcquisitionCost(e.target.value)} className={`bg-slate-950 border text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 transition-all placeholder:text-slate-600 ${formErrors.acquisitionCost ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-slate-800 focus:border-indigo-500 focus:ring-indigo-500"}`} />
                   {formErrors.acquisitionCost && <p className="text-[10px] text-red-400">{formErrors.acquisitionCost[0]}</p>}
                 </div>

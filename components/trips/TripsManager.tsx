@@ -6,6 +6,7 @@ import {
   Search, Play, X, Loader2, Info, MapPin, Navigation,
   FileText, Printer, Droplets, Wallet, ArrowRight
 } from "lucide-react";
+import { useSystemSettings } from "@/app/providers";
 
 interface Vehicle {
   id: string;
@@ -64,6 +65,7 @@ const STATUS_META: Record<string, { label: string; color: string; border: string
 
 export default function TripsManager({ initialTrips, vehicles, drivers }: TripsManagerProps) {
   const router = useRouter();
+  const settings = useSystemSettings();
   const [trips, setTrips] = useState<Trip[]>(initialTrips);
   const [search, setSearch] = useState("");
   const [isDispatchOpen, setIsDispatchOpen] = useState(false);
@@ -71,6 +73,16 @@ export default function TripsManager({ initialTrips, vehicles, drivers }: TripsM
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
+
+  const formatDistance = (km: number | null) => {
+    if (km === null || km === undefined) return "—";
+    const val = settings.distanceUnit === "miles" ? km * 0.621371 : km;
+    return `${Math.round(val).toLocaleString()} ${settings.distanceUnit === "miles" ? "mi" : "km"}`;
+  };
+
+  const formatCost = (amount: number) => {
+    return `${settings.currencySymbol}${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
 
   // Form state
   const [source, setSource] = useState("");
@@ -105,10 +117,14 @@ export default function TripsManager({ initialTrips, vehicles, drivers }: TripsM
     setServerError(null);
     startTransition(async () => {
       try {
+        const distanceKm = settings.distanceUnit === "miles"
+          ? parseFloat(plannedDistance) / 0.621371
+          : parseFloat(plannedDistance);
+
         const res = await fetch("/api/trips", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ source, destination, cargoWeight, plannedDistance, vehicleId, driverId }),
+          body: JSON.stringify({ source, destination, cargoWeight, plannedDistance: distanceKm, vehicleId, driverId }),
         });
         const data = await res.json();
         if (!res.ok) { setServerError(data.error || "Failed to dispatch trip"); return; }
@@ -221,7 +237,7 @@ export default function TripsManager({ initialTrips, vehicles, drivers }: TripsM
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Expenses</span>
-                  <span className="text-xs text-slate-300 font-medium">{trip.expenses.length} · ${totalCost(trip.expenses).toFixed(2)}</span>
+                  <span className="text-xs text-slate-300 font-medium">{trip.expenses.length} · {formatCost(totalCost(trip.expenses))}</span>
                 </div>
               </div>
 
@@ -273,7 +289,7 @@ export default function TripsManager({ initialTrips, vehicles, drivers }: TripsM
                   <input type="number" placeholder="e.g. 2500" min="0" value={cargoWeight} onChange={(e) => setCargoWeight(e.target.value)} className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600" required />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Planned Distance (km)</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Planned Distance ({settings.distanceUnit === "miles" ? "mi" : "km"})</label>
                   <input type="number" placeholder="e.g. 340" min="0" value={plannedDistance} onChange={(e) => setPlannedDistance(e.target.value)} className="bg-slate-950 border border-slate-800 text-slate-200 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all placeholder:text-slate-600" required />
                 </div>
 
@@ -383,8 +399,8 @@ export default function TripsManager({ initialTrips, vehicles, drivers }: TripsM
                     { label: "Reg #", value: reportTrip.vehicle.registrationNumber },
                     { label: "Vehicle Type", value: reportTrip.vehicle.type },
                     { label: "Cargo Weight", value: `${reportTrip.cargoWeight} kg` },
-                    { label: "Planned Distance", value: `${reportTrip.plannedDistance} km` },
-                    { label: "Actual Distance", value: reportTrip.actualDistance ? `${reportTrip.actualDistance} km` : "—" },
+                    { label: "Planned Distance", value: formatDistance(reportTrip.plannedDistance) },
+                    { label: "Actual Distance", value: formatDistance(reportTrip.actualDistance) },
                     { label: "Fuel Consumed", value: reportTrip.fuelConsumed ? `${reportTrip.fuelConsumed} L` : "—" },
                     { label: "Start Time", value: reportTrip.startTime ? new Date(reportTrip.startTime).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—" },
                     { label: "End Time", value: reportTrip.endTime ? new Date(reportTrip.endTime).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—" },
@@ -413,14 +429,14 @@ export default function TripsManager({ initialTrips, vehicles, drivers }: TripsM
                             <span className="text-xs text-slate-500">{new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
                           </div>
                           <div className="flex flex-col items-end gap-0.5">
-                            <span className="text-sm font-bold text-slate-200">${e.cost.toFixed(2)}</span>
+                            <span className="text-sm font-bold text-slate-200">{formatCost(e.cost)}</span>
                             {e.liters > 0 && <span className="text-[10px] text-slate-500">{e.liters}L</span>}
                           </div>
                         </div>
                       ))}
                       <div className="flex justify-between items-center bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3">
                         <span className="text-xs font-bold text-emerald-400">Fuel Subtotal</span>
-                        <span className="font-bold text-emerald-400">${totalCost(fuelExpenses(reportTrip.expenses)).toFixed(2)}</span>
+                        <span className="font-bold text-emerald-400">{formatCost(totalCost(fuelExpenses(reportTrip.expenses)))}</span>
                       </div>
                     </div>
                   ) : (
@@ -444,12 +460,12 @@ export default function TripsManager({ initialTrips, vehicles, drivers }: TripsM
                             {e.description && <span className="text-xs text-slate-500">{e.description}</span>}
                             <span className="text-xs text-slate-500">{new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
                           </div>
-                          <span className="text-sm font-bold text-slate-200">${e.cost.toFixed(2)}</span>
+                          <span className="text-sm font-bold text-slate-200">{formatCost(e.cost)}</span>
                         </div>
                       ))}
                       <div className="flex justify-between items-center bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
                         <span className="text-xs font-bold text-amber-400">Other Subtotal</span>
-                        <span className="font-bold text-amber-400">${totalCost(otherExpenses(reportTrip.expenses)).toFixed(2)}</span>
+                        <span className="font-bold text-amber-400">{formatCost(totalCost(otherExpenses(reportTrip.expenses)))}</span>
                       </div>
                     </div>
                   ) : (
@@ -460,7 +476,7 @@ export default function TripsManager({ initialTrips, vehicles, drivers }: TripsM
                 {/* Grand Total */}
                 <div className="flex items-center justify-between bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-5">
                   <span className="font-bold text-slate-100">Total Trip Expenses</span>
-                  <span className="text-2xl font-bold text-indigo-400">${totalCost(reportTrip.expenses).toFixed(2)}</span>
+                  <span className="text-2xl font-bold text-indigo-400">{formatCost(totalCost(reportTrip.expenses))}</span>
                 </div>
               </div>
             </div>
@@ -486,8 +502,8 @@ export default function TripsManager({ initialTrips, vehicles, drivers }: TripsM
                   {[
                     ["Driver", reportTrip.driver.name], ["License #", reportTrip.driver.licenseNumber],
                     ["Vehicle", `${reportTrip.vehicle.name} (${reportTrip.vehicle.type})`], ["Reg #", reportTrip.vehicle.registrationNumber],
-                    ["Cargo Weight", `${reportTrip.cargoWeight} kg`], ["Planned Distance", `${reportTrip.plannedDistance} km`],
-                    ["Actual Distance", reportTrip.actualDistance ? `${reportTrip.actualDistance} km` : "—"],
+                    ["Cargo Weight", `${reportTrip.cargoWeight} kg`], ["Planned Distance", formatDistance(reportTrip.plannedDistance)],
+                    ["Actual Distance", formatDistance(reportTrip.actualDistance)],
                     ["Fuel Consumed", reportTrip.fuelConsumed ? `${reportTrip.fuelConsumed} L` : "—"],
                     ["Start Time", reportTrip.startTime ? new Date(reportTrip.startTime).toLocaleString() : "—"],
                     ["End Time", reportTrip.endTime ? new Date(reportTrip.endTime).toLocaleString() : "—"],
@@ -514,11 +530,11 @@ export default function TripsManager({ initialTrips, vehicles, drivers }: TripsM
                       <td style={{ padding: "8px 0" }}>{new Date(e.date).toLocaleDateString()}</td>
                       <td style={{ padding: "8px 0" }}>{e.description || "Fuel fill-up"}</td>
                       <td style={{ textAlign: "right", padding: "8px 0" }}>{e.liters}L</td>
-                      <td style={{ textAlign: "right", padding: "8px 0" }}>${e.cost.toFixed(2)}</td>
+                      <td style={{ textAlign: "right", padding: "8px 0" }}>{formatCost(e.cost)}</td>
                     </tr>
                   ))}
                   <tr><td colSpan={3} style={{ textAlign: "right", fontWeight: 700, padding: "12px 0" }}>Fuel Subtotal</td>
-                    <td style={{ textAlign: "right", fontWeight: 700, padding: "12px 0" }}>${totalCost(fuelExpenses(reportTrip.expenses)).toFixed(2)}</td></tr>
+                    <td style={{ textAlign: "right", fontWeight: 700, padding: "12px 0" }}>{formatCost(totalCost(fuelExpenses(reportTrip.expenses)))}</td></tr>
                 </tbody>
               </table>
 
@@ -536,17 +552,17 @@ export default function TripsManager({ initialTrips, vehicles, drivers }: TripsM
                       <td style={{ padding: "8px 0" }}>{new Date(e.date).toLocaleDateString()}</td>
                       <td style={{ padding: "8px 0" }}>{e.type}</td>
                       <td style={{ padding: "8px 0" }}>{e.description || "—"}</td>
-                      <td style={{ textAlign: "right", padding: "8px 0" }}>${e.cost.toFixed(2)}</td>
+                      <td style={{ textAlign: "right", padding: "8px 0" }}>{formatCost(e.cost)}</td>
                     </tr>
                   ))}
                   <tr><td colSpan={3} style={{ textAlign: "right", fontWeight: 700, padding: "12px 0" }}>Other Subtotal</td>
-                    <td style={{ textAlign: "right", fontWeight: 700, padding: "12px 0" }}>${totalCost(otherExpenses(reportTrip.expenses)).toFixed(2)}</td></tr>
+                    <td style={{ textAlign: "right", fontWeight: 700, padding: "12px 0" }}>{formatCost(totalCost(otherExpenses(reportTrip.expenses)))}</td></tr>
                 </tbody>
               </table>
 
               <div style={{ borderTop: "2px solid #111", paddingTop: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontWeight: 800, fontSize: "18px" }}>TOTAL TRIP EXPENSES</span>
-                <span style={{ fontWeight: 800, fontSize: "24px" }}>${totalCost(reportTrip.expenses).toFixed(2)}</span>
+                <span style={{ fontWeight: 800, fontSize: "24px" }}>{formatCost(totalCost(reportTrip.expenses))}</span>
               </div>
             </div>
           </div>

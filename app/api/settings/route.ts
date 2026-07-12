@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getPermissions, savePermissions } from "@/lib/permissions";
+import { getSystemSettings, saveSystemSettings } from "@/lib/settings";
 
 export async function GET() {
   try {
@@ -10,7 +11,8 @@ export async function GET() {
     }
 
     const permissions = getPermissions();
-    return NextResponse.json(permissions);
+    const settings = getSystemSettings();
+    return NextResponse.json({ permissions, settings });
   } catch (error) {
     console.error("[GET SETTINGS ERROR]", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -29,11 +31,26 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    savePermissions(body);
 
-    return NextResponse.json({ success: true, permissions: getPermissions() });
+    if (body.permissions || body.settings) {
+      if (body.permissions) {
+        savePermissions(body.permissions);
+      }
+      if (body.settings) {
+        saveSystemSettings(body.settings);
+      }
+    } else {
+      savePermissions(body);
+    }
+
+    return NextResponse.json({
+      success: true,
+      permissions: getPermissions(),
+      settings: getSystemSettings(),
+    });
   } catch (error: any) {
     console.error("[POST SETTINGS ERROR]", error);
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }
+
