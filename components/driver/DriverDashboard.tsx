@@ -36,10 +36,10 @@ interface DriverDashboardProps {
 }
 
 const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
-  DRAFT:      { label: "Draft",      color: "#64748b", bg: "rgba(100,116,139,0.12)" },
-  DISPATCHED: { label: "On Trip",    color: "#3b82f6", bg: "rgba(59,130,246,0.12)" },
-  COMPLETED:  { label: "Completed",  color: "#10b981", bg: "rgba(16,185,129,0.12)" },
-  CANCELLED:  { label: "Cancelled",  color: "#ef4444", bg: "rgba(239,68,68,0.12)" },
+  DRAFT: { label: "Draft", color: "#64748b", bg: "rgba(100,116,139,0.12)" },
+  DISPATCHED: { label: "On Trip", color: "#3b82f6", bg: "rgba(59,130,246,0.12)" },
+  COMPLETED: { label: "Completed", color: "#10b981", bg: "rgba(16,185,129,0.12)" },
+  CANCELLED: { label: "Cancelled", color: "#ef4444", bg: "rgba(239,68,68,0.12)" },
 };
 
 const EXPENSE_TYPES = ["FUEL", "MAINTENANCE", "TOLL", "PARKING", "OTHER"];
